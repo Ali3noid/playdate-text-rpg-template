@@ -1,6 +1,5 @@
 import "CoreLibs/object"
 import "CoreLibs/graphics"
-import "CoreLibs/ui"
 import "data/dialog_01"  -- added
 
 local gfx <const> = playdate.graphics
