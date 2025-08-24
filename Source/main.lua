@@ -1,6 +1,5 @@
 import "CoreLibs/object"
 import "CoreLibs/graphics"
-import "CoreLibs/ui"
 import "CoreLibs/timer"
 
 import "scenes/menu"

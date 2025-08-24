@@ -1,15 +1,14 @@
 import "CoreLibs/object"
 import "CoreLibs/graphics"
 import "CoreLibs/ui"
+import "data/dialog_01"  -- added
 
 local gfx <const> = playdate.graphics
 
 class('Menu').extends()
 
 function Menu:init(config)
-	-- Dependencies
 	self.switch = assert(config and config.switch, "Menu: missing switch()")
-	-- Menu entries
 	self.items = { "New Game", "Options", "Quit" }
 	self.index = 1
 end
@@ -19,17 +18,14 @@ function Menu:enter()
 end
 
 function Menu:update()
-	-- Header
 	gfx.clear(gfx.kColorWhite)
 	gfx.fillRoundRect(8, 8, 384 - 16, 24, 8)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-	gfx.drawTextInRect("Playdate * Prototype *", 14, 12, 384 - 28, 20)
+	gfx.drawTextInRect("Playdate Prototype", 14, 12, 384 - 28, 20)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 
-	-- Title
 	gfx.drawTextAligned("Minimal Menu", 192, 60, kTextAlignment.center)
 
-	-- Items
 	for i, label in ipairs(self.items) do
 		local y = 100 + (i - 1) * 22
 		if i == self.index then
@@ -42,23 +38,17 @@ function Menu:update()
 		end
 	end
 
-	-- Footer hint
-	gfx.drawTextAligned(" * A confirm * B back", 192, 220, kTextAlignment.center)
+	gfx.drawTextAligned("^/v select - A confirm - B back", 192, 220, kTextAlignment.center)
 end
 
-function Menu:up()
-	self.index = ((self.index - 2) % #self.items) + 1
-end
-
-function Menu:down()
-	self.index = (self.index % #self.items) + 1
-end
+function Menu:up()   self.index = ((self.index - 2) % #self.items) + 1 end
+function Menu:down() self.index = (self.index % #self.items) + 1 end
 
 function Menu:a()
 	local choice = self.items[self.index]
 	if choice == "New Game" then
 		print("[Menu] New Game selected")
-		self.switch("dialog") -- switch to Dialog scene
+		self.switch("dialog", { script = DIALOG_01, stats = { Speech = 2, Cunning = 1, Strength = 0 } })
 	elseif choice == "Options" then
 		print("[Menu] Options selected")
 	elseif choice == "Quit" then
@@ -66,6 +56,4 @@ function Menu:a()
 	end
 end
 
-function Menu:b()
-	-- No-op
-end
+function Menu:b() end

@@ -7,27 +7,10 @@ local gfx <const> = playdate.graphics
 class('Dialog').extends()
 
 function Dialog:init(config)
-	-- Dependencies and data
 	self.switch = assert(config and config.switch, "Dialog: missing switch()")
-	-- If no script provided, use a tiny built-in sample
-	self.script = config.script or {
-		{ type = "line",   speaker = "Narrator", text = "You wake up to the sound of the crank." },
-		{ type = "choice", prompt  = "What do you do?", options = {
-			{ label = "Look around", target = 5 },
-			{ label = "Call out",    target = 8 },
-		}},
-		-- buffer entries (indices 3-4)
-		{ type = "line", speaker = "Narrator", text = "(buffer)" },
-		{ type = "line", speaker = "Narrator", text = "(buffer)" },
-		-- id 5
-		{ type = "line", speaker = "You", text = "I look around the room." },
-		{ type = "line", speaker = "Narrator", text = "Nothing unusual. A quiet morning." },
-		{ type = "line", speaker = "Narrator", text = "Press B to return to menu." },
-		-- id 8
-		{ type = "line", speaker = "You", text = "Hello? Anyone there?" },
-		{ type = "line", speaker = "Narrator", text = "Only silence answers you." },
-		{ type = "line", speaker = "Narrator", text = "Press B to return to menu." },
-	}
+	self.script = assert(config and config.script, "Dialog: missing script table")
+	-- optional player stats; defaults for prototype
+	self.stats  = config.stats or { Speech = 2, Cunning = 1, Strength = 0 }
 
 	self.index = 1
 	self.choiceIndex = 1
@@ -37,7 +20,17 @@ end
 function Dialog:enter() end
 function Dialog:leave() end
 
--- Navigation helpers
+-- helpers
+local function injectSequence(list, i, seq)
+	for k = #seq, 1, -1 do
+		table.insert(list, i + 1, seq[k])
+	end
+end
+
+local function rollD20()
+	return math.random(1, 20)
+end
+
 function Dialog:jumpTo(targetIndex)
 	self.index = targetIndex
 	self.choiceIndex = 1
@@ -50,13 +43,13 @@ function Dialog:advance()
 	self.node = self.script[self.index]
 end
 
--- Render
+-- render
 function Dialog:update()
-	-- Header
+	-- header
 	gfx.clear(gfx.kColorWhite)
 	gfx.fillRoundRect(8, 8, 384 - 16, 24, 8)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-	gfx.drawTextInRect("Playdate Dialog", 14, 12, 384 - 28, 20)
+	gfx.drawTextInRect("Dialog", 14, 12, 384 - 28, 20)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 
 	if not self.node then
@@ -83,12 +76,18 @@ function Dialog:update()
 			end
 		end
 		gfx.drawTextAligned("* A confirm * B menu", 192, 220, kTextAlignment.center)
+
+	elseif self.node.type == "check" then
+		local info = string.format("Check: %s vs %d (d20 + stat)", self.node.skill or "?", self.node.difficulty or 10)
+		gfx.drawText(info, 16, 56)
+		gfx.drawText("Press A to roll. B to menu.", 16, 76)
+
 	else
 		gfx.drawTextAligned("(Unknown node type)", 192, 120, kTextAlignment.center)
 	end
 end
 
--- Input
+-- input
 function Dialog:up()
 	if self.node and self.node.type == "choice" then
 		self.choiceIndex = ((self.choiceIndex - 2) % #self.node.options) + 1
@@ -103,15 +102,36 @@ end
 
 function Dialog:a()
 	if not self.node then return end
+
 	if self.node.type == "line" then
 		self:advance()
+
 	elseif self.node.type == "choice" then
 		local opt = self.node.options[self.choiceIndex]
-		if opt.target then
-			self:jumpTo(opt.target)
-		else
-			self:advance()
+		if opt.target then self:jumpTo(opt.target) else self:advance() end
+
+	elseif self.node.type == "check" then
+		local skill = self.node.skill or "Speech"
+		local difficulty  = self.node.difficulty  or 10
+		local base  = self.stats[skill] or 0
+		local r     = rollD20()
+		local total = r + base
+		local ok    = (total >= difficulty)
+
+		local log = {
+			{ type = "line", speaker = "Narrator",
+			  text = string.format("Roll: %d + %s(%d) = %d vs %d -> %s",
+					r, skill, base, total, difficulty, ok and "success" or "fail") }
+		}
+
+		if ok and self.node.success then
+			for _, n in ipairs(self.node.success) do table.insert(log, n) end
+		elseif (not ok) and self.node.fail then
+			for _, n in ipairs(self.node.fail) do table.insert(log, n) end
 		end
+
+		injectSequence(self.script, self.index, log)
+		self:advance()
 	end
 end
 
