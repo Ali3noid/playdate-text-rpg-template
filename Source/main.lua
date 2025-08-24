@@ -4,12 +4,28 @@ import "CoreLibs/ui"
 import "CoreLibs/timer"
 
 import "scenes/menu"
+import "scenes/dialog"
 
 local pd <const> = playdate
 local gfx <const> = pd.graphics
 
--- Create scene instance
-local activeScene = Menu()
+-- Active scene instance
+local activeScene
+
+-- Simple scene switcher handed to scenes via config
+local function switchScene(name, opts)
+    if activeScene and activeScene.leave then activeScene:leave() end
+
+    if name == "menu" then
+        activeScene = Menu({ switch = switchScene })
+    elseif name == "dialog" then
+        activeScene = Dialog({ switch = switchScene, script = (opts and opts.script) })
+    else
+        error("Unknown scene: " .. tostring(name))
+    end
+
+    if activeScene and activeScene.enter then activeScene:enter() end
+end
 
 function pd.update()
     gfx.setBackgroundColor(gfx.kColorWhite)
@@ -19,7 +35,10 @@ function pd.update()
 end
 
 -- Input delegation
-function pd.upButtonDown()    if activeScene.up then activeScene:up() end end
-function pd.downButtonDown()  if activeScene.down then activeScene:down() end end
-function pd.AButtonDown()     if activeScene.a then activeScene:a() end end
-function pd.BButtonDown()     if activeScene.b then activeScene:b() end end
+function pd.upButtonDown()    if activeScene and activeScene.up then activeScene:up() end end
+function pd.downButtonDown()  if activeScene and activeScene.down then activeScene:down() end end
+function pd.AButtonDown()     if activeScene and activeScene.a then activeScene:a() end end
+function pd.BButtonDown()     if activeScene and activeScene.b then activeScene:b() end end
+
+-- Boot to menu
+switchScene("menu")

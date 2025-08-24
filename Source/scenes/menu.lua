@@ -6,7 +6,10 @@ local gfx <const> = playdate.graphics
 
 class('Menu').extends()
 
-function Menu:init()
+function Menu:init(config)
+	-- Dependencies
+	self.switch = assert(config and config.switch, "Menu: missing switch()")
+	-- Menu entries
 	self.items = { "New Game", "Options", "Quit" }
 	self.index = 1
 end
@@ -16,11 +19,11 @@ function Menu:enter()
 end
 
 function Menu:update()
-	-- Frame/header
+	-- Header
 	gfx.clear(gfx.kColorWhite)
 	gfx.fillRoundRect(8, 8, 384 - 16, 24, 8)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-	gfx.drawTextInRect("Playdate * Prototype", 14, 12, 384 - 28, 20)
+	gfx.drawTextInRect("Playdate * Prototype *", 14, 12, 384 - 28, 20)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 
 	-- Title
@@ -53,18 +56,16 @@ end
 
 function Menu:a()
 	local choice = self.items[self.index]
-	-- Use console logging instead of alerts; Playdate SDK does not expose playdate.system.alert
 	if choice == "New Game" then
-		print("[Menu] New Game selected (stub)")
-		-- TODO: switch to Dialog scene when implemented
+		print("[Menu] New Game selected")
+		self.switch("dialog") -- switch to Dialog scene
 	elseif choice == "Options" then
-		print("[Menu] Options selected (stub)")
+		print("[Menu] Options selected")
 	elseif choice == "Quit" then
-		print("[Menu] Quit selected (stub)")
-		-- NOTE: there's no app-level quit; staying in menu for now
+		print("[Menu] Quit selected")
 	end
 end
 
 function Menu:b()
-	-- No-op for now; stays in menu
+	-- No-op
 end
