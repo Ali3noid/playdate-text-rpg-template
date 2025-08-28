@@ -18,7 +18,13 @@ local function switchScene(name, opts)
     if name == "menu" then
         activeScene = Menu({ switch = switchScene })
     elseif name == "dialog" then
-        activeScene = Dialog({ switch = switchScene, script = (opts and opts.script) })
+        -- Pass through script, stats and inventory
+        activeScene = Dialog({
+            switch    = switchScene,
+            script    = (opts and opts.script) or nil,
+            stats     = (opts and opts.stats) or nil,
+            inventory = (opts and opts.inventory) or nil
+        })
     else
         error("Unknown scene: " .. tostring(name))
     end

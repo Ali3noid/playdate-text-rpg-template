@@ -20,7 +20,7 @@ function Menu:update()
 	gfx.clear(gfx.kColorWhite)
 	gfx.fillRoundRect(8, 8, 384 - 16, 24, 8)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-	gfx.drawTextInRect("Playdate Prototype", 14, 12, 384 - 28, 20)
+	gfx.drawTextInRect("Playdate * Prototype *", 14, 12, 384 - 28, 20)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 
 	gfx.drawTextAligned("Minimal Menu", 192, 60, kTextAlignment.center)
@@ -37,7 +37,7 @@ function Menu:update()
 		end
 	end
 
-	gfx.drawTextAligned("^/v select - A confirm - B back", 192, 220, kTextAlignment.center)
+	gfx.drawTextAligned("* A confirm * B back", 192, 220, kTextAlignment.center)
 end
 
 function Menu:up()   self.index = ((self.index - 2) % #self.items) + 1 end
