@@ -34,7 +34,7 @@ DIALOG_01 = {
 	{ type = "line", speaker = "Narrator", text = "Zamek kliknal i drzwi sie otworzyly!", target = 19 },
 
 	-- 15
-	{ type = "check", skill = "Strength", difficulty = 10,
+	{ type = "check", skill = "Strength", difficulty = 1,
 		success = {
 			{ type = "midCheckLine", speaker = "Narrator", text = "Uderzasz z calej sily i drzwi ustepuja." },
 			{ type = "line", speaker = "Narrator", text = "Jestes wolny!", target = 19 },
@@ -45,7 +45,7 @@ DIALOG_01 = {
 	},
 	{ type = "line", speaker = "Narrator", text = "Wracasz do srodka.", target = 2 },
 
-	{ type = "check", skill = "Cunning", difficulty = 12,
+	{ type = "check", skill = "Cunning", difficulty = 2,
 		success = {
 			{ type = "midCheckLine", speaker = "Narrator", text = "Zamek ustepuje po chwili." },
 			{ type = "line", speaker = "Narrator", text = "Drzwi otwarte!", target = 19 },
