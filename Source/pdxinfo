@@ -2,6 +2,6 @@ name=Template
 author=You, Inc.
 description=text-rpg-template.
 bundleID=com.yourcompany.TemplateGame
-version=1.0
+version=1.1
 buildNumber=100
 imagePath=SystemAssets
