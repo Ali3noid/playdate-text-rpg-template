@@ -6,68 +6,30 @@ import "systems/checks"
 local gfx = playdate.graphics
 
 --[[
-Dialog scene with:
-- text box frame
-- typing effect for lines
-- conditional choices (requireStat / requireItem)
-- item nodes (type = "item")
-- stat nodes (type = "stat")
-- one-time logging on node enter
-- midCheckLine: informational line used inside check branches (ignores target)
-- Risk Dice selection + result display for check nodes
-- Choice list scrolling when options exceed available space
+Dialog scene with manual node IDs:
+- All routing uses node.id as the source of truth.
+- The script is still an array for sequential flow, but jump targets resolve via id map.
+- After any dynamic insertion, the id map is rebuilt (inserted nodes normally have no id).
 ]]
 
 class('Dialog').extends()
 
--- Accept both config-table and positional args
-function Dialog:init(arg1, script, stats, inventory)
-	local cfg
-	if type(arg1) == "table" then
-		cfg            = arg1
-		self.switch    = assert(cfg.switch, "Dialog: missing switch()")
-		self.script    = assert(cfg.script, "Dialog: missing script table")
-		self.stats     = cfg.stats or {}
-		self.inventory = cfg.inventory or {}
-	else
-		self.switch    = assert(arg1, "Dialog: missing switch()")
-		self.script    = assert(script, "Dialog: missing script table")
-		self.stats     = stats or {}
-		self.inventory = inventory or {}
+-- ===== Helpers for ID map =====
+
+local function buildIdMap(script)
+	-- Build a map id -> array index. Also validate uniqueness.
+	local map = {}
+	for idx, node in ipairs(script) do
+		local id = node and node.id
+		if id ~= nil then
+			assert(type(id) == "number", "Dialog: node.id must be a number")
+			assert(map[id] == nil, "Dialog: duplicate node.id=" .. tostring(id))
+			map[id] = idx
+		end
 	end
-
-	self.index        = 1
-	self.choiceIndex  = 1
-	self.choiceFirstVisible = 1   -- new: first visible option index for scrolling
-	self.node         = nil
-
-	-- typing effect state
-	self.currentText  = ""
-	self.textPos      = 0
-	self.typing       = false
-	self.charInterval = 2
-	self.frameCounter = 0
-
-	-- Risk Dice UX state
-	self.mode          = nil      -- nil | "diceSelect" | "diceResult"
-	self.riskDiceCount = 0
-	self.testResult    = nil
-
-	-- Checks instance (tracks misfortune)
-	self.checks = Checks()
-
-	self:enterNode(1)
+	return map
 end
 
--- Prepare typing effect
-function Dialog:prepareLine()
-	self.currentText  = self.node and (self.node.text or "") or ""
-	self.textPos      = 0
-	self.typing       = true
-	self.frameCounter = 0
-end
-
--- helpers
 local function formatTarget(v)
 	if v == nil then return "nil" end
 	return tostring(v)
@@ -93,35 +55,143 @@ local function findLastRoutableIndex(seq)
 	return nil
 end
 
--- Logging
+-- ===== Class =====
+
+function Dialog:init(arg1, script, stats, inventory)
+	local cfg
+	if type(arg1) == "table" then
+		cfg            = arg1
+		self.switch    = assert(cfg.switch, "Dialog: missing switch()")
+		self.script    = assert(cfg.script, "Dialog: missing script table")
+		self.stats     = cfg.stats or {}
+		self.inventory = cfg.inventory or {}
+	else
+		self.switch    = assert(arg1, "Dialog: missing switch()")
+		self.script    = assert(script, "Dialog: missing script table")
+		self.stats     = stats or {}
+		self.inventory = inventory or {}
+	end
+
+	-- Build initial id map
+	self.idToPos = buildIdMap(self.script)
+
+	-- State
+	self.posIndex     = 1           -- array index of current node (not stable across inserts)
+	self.currentId    = nil         -- stable id if node has one, else nil
+	self.node         = nil
+	self.choiceIndex  = 1
+	self.choiceFirstVisible = 1
+
+	-- typing effect
+	self.currentText  = ""
+	self.textPos      = 0
+	self.typing       = false
+	self.charInterval = 2
+	self.frameCounter = 0
+
+	-- Risk Dice UX
+	self.mode          = nil      -- nil | "diceSelect" | "diceResult"
+	self.riskDiceCount = 0
+	self.testResult    = nil
+
+	-- Checks instance
+	self.checks = Checks()
+
+	-- Start: prefer node with id=1 if present, else first element
+	if self.idToPos[1] then
+		self:enterById(1)
+	else
+		self:enterByPos(1)
+	end
+end
+
+-- ===== Enter / Jump =====
+
+function Dialog:rebuildIdMap()
+	self.idToPos = buildIdMap(self.script)
+end
+
+function Dialog:enterByPos(pos)
+	self.posIndex = pos
+	self.node     = self.script[self.posIndex]
+	self.currentId = (self.node and self.node.id) or nil
+
+	-- reset UI states
+	self.choiceIndex = 1
+	self.choiceFirstVisible = 1
+	self.mode          = nil
+	self.riskDiceCount = 0
+	self.testResult    = nil
+
+	-- typing for text-like nodes
+	if self.node then
+		local t = self.node.type
+		if t == "line" or t == "item" or t == "stat" or t == "midCheckLine" then
+			self:prepareLine()
+		else
+			self.typing = false
+		end
+	end
+	self:logNode()
+end
+
+function Dialog:enterById(id)
+	local pos = self.idToPos[id]
+	assert(pos, "Dialog: unknown node id=" .. tostring(id))
+	self:enterByPos(pos)
+end
+
+function Dialog:jumpTo(targetId)
+	assert(targetId ~= nil, "Dialog: jumpTo() missing target id")
+	self:enterById(targetId)
+end
+
+function Dialog:advance()
+	-- Sequential advance by array position (used when node has no explicit target)
+	self:enterByPos(self.posIndex + 1)
+end
+
+-- ===== Typing =====
+
+function Dialog:prepareLine()
+	self.currentText  = self.node and (self.node.text or "") or ""
+	self.textPos      = 0
+	self.typing       = true
+	self.frameCounter = 0
+end
+
+-- ===== Logging =====
+
 function Dialog:logNode()
 	if not self.node then
-		print(string.format("[Dialog] enter node #%d (nil)", self.index or -1))
+		print(string.format("[Dialog] enter pos=%d id=nil (nil node)", self.posIndex or -1))
 		return
 	end
 	local t = tostring(self.node.type)
+	local idStr = (self.node.id ~= nil) and tostring(self.node.id) or "nil"
+
 	if t == "line" or t == "item" or t == "stat" or t == "midCheckLine" then
 		local speaker = self.node.speaker or "-"
 		local textPrev = (self.node.text and #self.node.text > 40) and (self.node.text:sub(1,37).."...") or (self.node.text or "")
 		local targetStr = formatTarget(self.node.target)
 		if t == "item" then
 			local itemName = self.node.item or "-"
-			print(string.format("[Dialog] enter node #%d type=item item=%s speaker=%s target=%s text=\"%s\"",
-				self.index, itemName, speaker, targetStr, textPrev))
+			print(string.format("[Dialog] enter pos=%d id=%s type=item item=%s speaker=%s target=%s text=\"%s\"",
+				self.posIndex, idStr, itemName, speaker, targetStr, textPrev))
 		elseif t == "stat" then
 			local statName = self.node.stat or "-"
 			local delta = tostring(self.node.delta or 0)
-			print(string.format("[Dialog] enter node #%d type=stat stat=%s delta=%s speaker=%s target=%s text=\"%s\"",
-				self.index, statName, delta, speaker, targetStr, textPrev))
+			print(string.format("[Dialog] enter pos=%d id=%s type=stat stat=%s delta=%s speaker=%s target=%s text=\"%s\"",
+				self.posIndex, idStr, statName, delta, speaker, targetStr, textPrev))
 		else
-			print(string.format("[Dialog] enter node #%d type=%s speaker=%s target=%s text=\"%s\"",
-				self.index, t, speaker, targetStr, textPrev))
+			print(string.format("[Dialog] enter pos=%d id=%s type=%s speaker=%s target=%s text=\"%s\"",
+				self.posIndex, idStr, t, speaker, targetStr, textPrev))
 		end
 	elseif t == "choice" then
 		local prompt = self.node.prompt or "-"
 		local count  = (self.node.options and #self.node.options) or 0
-		print(string.format("[Dialog] enter node #%d type=choice prompt=\"%s\" options=%d",
-			self.index, prompt, count))
+		print(string.format("[Dialog] enter pos=%d id=%s type=choice prompt=\"%s\" options=%d",
+			self.posIndex, idStr, prompt, count))
 		if self.node.options then
 			for i, opt in ipairs(self.node.options) do
 				local ok = self:optionIsAvailable(opt)
@@ -135,39 +205,15 @@ function Dialog:logNode()
 		local diff  = self.node.difficulty or 10
 		local sT    = formatTarget(self.node.successTarget)
 		local fT    = formatTarget(self.node.failTarget)
-		print(string.format("[Dialog] enter node #%d type=check skill=%s difficulty=%d successTarget=%s failTarget=%s",
-			self.index, skill, diff, sT, fT))
+		print(string.format("[Dialog] enter pos=%d id=%s type=check skill=%s difficulty=%d successTarget=%s failTarget=%s",
+			self.posIndex, idStr, skill, diff, sT, fT))
 	else
 		local trg = formatTarget(self.node.target)
-		print(string.format("[Dialog] enter node #%d type=%s target=%s", self.index, t, trg))
+		print(string.format("[Dialog] enter pos=%d id=%s type=%s target=%s", self.posIndex, idStr, t, trg))
 	end
 end
 
--- Enter node
-function Dialog:enterNode(i)
-	self.index       = i
-	self.choiceIndex = 1
-	self.choiceFirstVisible = 1
-	self.node        = self.script[self.index]
-
-	-- reset dice UI state on new node
-	self.mode          = nil
-	self.riskDiceCount = 0
-	self.testResult    = nil
-
-	if self.node then
-		local t = self.node.type
-		if t == "line" or t == "item" or t == "stat" or t == "midCheckLine" then
-			self:prepareLine()
-		else
-			self.typing = false
-		end
-	end
-	self:logNode()
-end
-
-function Dialog:jumpTo(i) self:enterNode(i) end
-function Dialog:advance() self:enterNode(self.index + 1) end
+-- ===== Choice locks =====
 
 function Dialog:optionIsAvailable(opt)
 	if opt.requireStat then
@@ -185,7 +231,8 @@ function Dialog:optionIsAvailable(opt)
 	return true
 end
 
--- Update / draw
+-- ===== Update / Draw =====
+
 function Dialog:update()
 	gfx.clear(gfx.kColorWhite)
 
@@ -196,7 +243,7 @@ function Dialog:update()
 
 	local nodeType = self.node.type
 
-	-- === Dynamic panel sizing =================================================
+	-- Dynamic panel sizing
 	local boxX, boxY, boxW, boxH = 16, 64, 384 - 32, 100
 	if nodeType == "line" or nodeType == "item" or nodeType == "stat" or nodeType == "midCheckLine" then
 		boxY, boxH = 64, 100
@@ -213,14 +260,14 @@ function Dialog:update()
 		end
 	end
 
-	-- Panel: white fill + black border (so text is visible)
+	-- Panel
 	gfx.setColor(gfx.kColorWhite)
 	gfx.fillRoundRect(boxX, boxY, boxW, boxH, 8)
 	gfx.setColor(gfx.kColorBlack)
 	gfx.drawRoundRect(boxX, boxY, boxW, boxH, 8)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 
-	-- === Render content =======================================================
+	-- Content
 	if nodeType == "line" or nodeType == "item" or nodeType == "stat" or nodeType == "midCheckLine" then
 		-- typing
 		if self.typing then
@@ -238,7 +285,6 @@ function Dialog:update()
 		if self.node.speaker then
 			local font = gfx.getFont()
 			local fontHeight = (font and font:getHeight()) or 14
-			-- place speaker label fully above the frame, clamped to top of screen
 			local speakerY = math.max(0, boxY - fontHeight - 4)
 			gfx.drawText(self.node.speaker .. ":", boxX + 8, speakerY)
 		end
@@ -246,22 +292,18 @@ function Dialog:update()
 		gfx.drawTextAligned(self.typing and "* A skip * B menu" or "* A next * B menu", 192, 220, kTextAlignment.center)
 
 	elseif nodeType == "choice" then
-		-- prompt
 		gfx.drawTextInRect(self.node.prompt or "Choose:", boxX + 8, boxY + 8, boxW - 16, 40)
 
-		-- compute how many options fit and maintain scroll window
 		local totalOptions = (self.node.options and #self.node.options) or 0
-		local availableHeight = boxH - 56                -- space under prompt
+		local availableHeight = boxH - 56
 		local maxVisibleOptions = math.max(1, math.floor(availableHeight / 20))
 
-		-- clamp first visible to keep cursor in view
 		local lastVisible = self.choiceFirstVisible + maxVisibleOptions - 1
 		if self.choiceIndex < self.choiceFirstVisible then
 			self.choiceFirstVisible = self.choiceIndex
 		elseif self.choiceIndex > lastVisible then
 			self.choiceFirstVisible = self.choiceIndex - maxVisibleOptions + 1
 		end
-		-- keep within [1, total]
 		if totalOptions >= maxVisibleOptions then
 			local maxStart = totalOptions - maxVisibleOptions + 1
 			if self.choiceFirstVisible > maxStart then self.choiceFirstVisible = maxStart end
@@ -270,7 +312,6 @@ function Dialog:update()
 		end
 		if self.choiceFirstVisible < 1 then self.choiceFirstVisible = 1 end
 
-		-- draw visible slice
 		local drawFrom = self.choiceFirstVisible
 		local drawTo = math.min(totalOptions, drawFrom + maxVisibleOptions - 1)
 		local lineY = boxY + 48
@@ -289,13 +330,10 @@ function Dialog:update()
 			lineY = lineY + 20
 		end
 
-		-- scroll indicators
 		if self.choiceFirstVisible > 1 then
-			-- up triangle
 			gfx.fillTriangle(boxX + boxW - 16, boxY + 44, boxX + boxW - 8, boxY + 44, boxX + boxW - 12, boxY + 38)
 		end
 		if drawTo < totalOptions then
-			-- down triangle
 			gfx.fillTriangle(boxX + boxW - 16, boxY + boxH - 10, boxX + boxW - 8, boxY + boxH - 10, boxX + boxW - 12, boxY + boxH - 4)
 		end
 
@@ -334,17 +372,17 @@ function Dialog:update()
 					end
 					y = y + 22
 				end
-				drawDiceRow("Kości:", r.rawRoll, false)
-				drawDiceRow("Finalny wynik:", r.finalRoll, true)
+				drawDiceRow("Raw:", r.rawRoll, false)
+				drawDiceRow("Adjusted:", r.finalRoll, true)
 
-				local resultTxt = string.format("Sukcesy: %d/%d -> %s", r.successes, difficultyValue, r.passed and "sukces" or "porazka")
+				local resultTxt = string.format("Successes: %d/%d -> %s", r.successes, difficultyValue, r.passed and "success" or "fail")
 				gfx.drawText(resultTxt, boxX + 8, y); y = y + 18
 
 				local misText
 				if self.riskDiceCount > 0 and not r.passed then
-					misText = string.format("Pech: %d -> %d", r.misfortuneBefore, r.misfortuneAfter)
+					misText = string.format("Misfortune: %d -> %d", r.misfortuneBefore, r.misfortuneAfter)
 				else
-					misText = string.format("Pech: %d", r.misfortuneBefore)
+					misText = string.format("Misfortune: %d", r.misfortuneBefore)
 				end
 				gfx.drawText(misText, boxX + 8, y)
 			end
@@ -352,7 +390,7 @@ function Dialog:update()
 
 		else
 			local infoText = string.format("Test: %s vs %d (d6 + stat)", skillName, difficultyValue)
-			local diceInfo = string.format("Kości: %d (stat) + Ryzyko ? | Pech: %d", baseStat, misfortune)
+			local diceInfo = string.format("Dice: %d (stat) + Risk ? | Misfortune: %d", baseStat, misfortune)
 			gfx.drawText(infoText, boxX + 8, boxY + 8)
 			gfx.drawText(diceInfo, boxX + 8, boxY + 28)
 			gfx.drawText("Press A to select Risk Dice, B to menu.", boxX + 8, boxY + 48)
@@ -364,7 +402,8 @@ function Dialog:update()
 	end
 end
 
--- Input
+-- ===== Input =====
+
 function Dialog:up()
 	if not self.node then return end
 	local t = self.node.type
@@ -396,7 +435,7 @@ function Dialog:a()
 			self.textPos = #self.currentText
 			self.typing = false
 		else
-			if self.node.target then self:jumpTo(self.node.target) else self:advance() end
+			if self.node.target ~= nil then self:jumpTo(self.node.target) else self:advance() end
 		end
 
 	elseif t == "midCheckLine" then
@@ -413,7 +452,7 @@ function Dialog:a()
 			self.typing = false
 		else
 			if self.node.item then table.insert(self.inventory, self.node.item) end
-			if self.node.target then self:jumpTo(self.node.target) else self:advance() end
+			if self.node.target ~= nil then self:jumpTo(self.node.target) else self:advance() end
 		end
 
 	elseif t == "stat" then
@@ -426,7 +465,7 @@ function Dialog:a()
 			local prev = self.stats[statName] or 0
 			self.stats[statName] = prev + delta
 			print(string.format("[Dialog] stat %s: %d -> %d", statName, prev, self.stats[statName]))
-			if self.node.target then self:jumpTo(self.node.target) else self:advance() end
+			if self.node.target ~= nil then self:jumpTo(self.node.target) else self:advance() end
 		end
 
 	elseif t == "choice" then
@@ -439,9 +478,7 @@ function Dialog:a()
 				self.choiceIndex, lbl, trg, ok and "OK" or "LOCK"))
 		end
 		if opt and self:optionIsAvailable(opt) then
-			if opt.target then self:jumpTo(opt.target) else self:advance() end
-		else
-			-- optional feedback for locked choice
+			if opt.target ~= nil then self:jumpTo(opt.target) else self:advance() end
 		end
 
 	elseif t == "check" then
@@ -477,11 +514,11 @@ function Dialog:a()
 				type = "midCheckLine",
 				speaker = "Narrator",
 				text = string.format(
-					"Rzuty: %s -> %s | sukcesy: %d/%d -> %s",
+					"Rolls: %s -> %s | Successes: %d/%d -> %s",
 					table.concat(r.rawRoll, ", "),
 					table.concat(r.finalRoll, ", "),
 					r.successes, difficultyValue,
-					isSuccess and "Sukces" or "Porazka"
+					isSuccess and "success" or "fail"
 				)
 			}
 
@@ -503,8 +540,11 @@ function Dialog:a()
 				end
 			end
 			for off, el in ipairs(splice) do
-				table.insert(self.script, self.index + off, el)
+				table.insert(self.script, self.posIndex + off, el)
 			end
+
+			-- Critical: dynamic insert shifts array positions; rebuild id map
+			self:rebuildIdMap()
 
 			self.mode = nil
 			self.riskDiceCount = 0
