@@ -10,6 +10,8 @@ import "scenes/dialogNodes/item_node"
 import "scenes/dialogNodes/stat_node"
 import "scenes/dialogNodes/choice_node"
 import "scenes/dialogNodes/check_node"
+import "scenes/dialogNodes/image_node"
+import "scenes/dialogNodes/chapterEnd_node"
 
 local gfx = playdate.graphics
 
@@ -236,12 +238,15 @@ function Dialog:update()
 
     local boxX, boxY, boxW, boxH = self:_panelLayout(nodeType)
 
-    -- Panel
-    gfx.setColor(gfx.kColorWhite)
-    gfx.fillRoundRect(boxX, boxY, boxW, boxH, 8)
-    gfx.setColor(gfx.kColorBlack)
-    gfx.drawRoundRect(boxX, boxY, boxW, boxH, 8)
-    gfx.setImageDrawMode(gfx.kDrawModeCopy)
+    local wantsPanel = not (handler and handler.fullscreen)
+
+    if wantsPanel then
+        gfx.setColor(gfx.kColorWhite)
+        gfx.fillRoundRect(boxX, boxY, boxW, boxH, 8)
+        gfx.setColor(gfx.kColorBlack)
+        gfx.drawRoundRect(boxX, boxY, boxW, boxH, 8)
+        gfx.setImageDrawMode(gfx.kDrawModeCopy)
+    end
 
     if handler and handler.draw then
         handler.draw(self, boxX, boxY, boxW, boxH)
