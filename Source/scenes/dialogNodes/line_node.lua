@@ -1,4 +1,3 @@
--- path: Source/scenes/dialog_nodes/line_node.lua
 import "CoreLibs/graphics"
 local gfx = playdate.graphics
 
@@ -22,6 +21,7 @@ local function drawSpeaker(self, x, y)
 end
 
 function H.draw(self, x, y, w, h)
+    -- Typing effect
     if self.typing then
         self.frameCounter += 1
         if self.frameCounter >= self.charInterval then
@@ -36,7 +36,8 @@ function H.draw(self, x, y, w, h)
     drawSpeaker(self, x, y)
     local textToDraw = self.currentText:sub(1, self.textPos)
     gfx.drawTextInRect(textToDraw, x + 8, y + 8, w - 16, h - 16)
-    gfx.drawTextAligned(self.typing and "* A skip * B menu" or "* A next * B menu", 192, 220, kTextAlignment.center)
+    -- Update prompt: B now switches tabs instead of returning to the menu
+    gfx.drawTextAligned(self.typing and "* A skip * B switch" or "* A next * B switch", 192, 220, kTextAlignment.center)
 end
 
 function H.a(self)

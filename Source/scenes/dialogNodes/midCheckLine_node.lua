@@ -1,4 +1,3 @@
--- path: Source/scenes/dialog_nodes/midCheckLine_node.lua
 import "CoreLibs/graphics"
 local gfx = playdate.graphics
 
@@ -33,7 +32,7 @@ function H.draw(self, x, y, w, h)
     end
     local textToDraw = self.currentText:sub(1, self.textPos)
     gfx.drawTextInRect(textToDraw, x + 8, y + 8, w - 16, h - 16)
-    gfx.drawTextAligned(self.typing and "* A skip * B menu" or "* A next * B menu", 192, 220, kTextAlignment.center)
+    gfx.drawTextAligned(self.typing and "* A skip * B switch" or "* A next * B switch", 192, 220, kTextAlignment.center)
 end
 
 function H.a(self)

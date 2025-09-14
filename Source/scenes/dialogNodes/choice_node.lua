@@ -1,4 +1,3 @@
--- path: Source/scenes/dialog_nodes/choice_node.lua
 import "CoreLibs/graphics"
 local gfx = playdate.graphics
 
@@ -56,7 +55,7 @@ function H.draw(self, x, y, w, h)
         gfx.fillTriangle(x + w - 16, y + h - 10, x + w - 8, y + h - 10, x + w - 12, y + h - 4)
     end
 
-    gfx.drawTextAligned("* A confirm * B menu", 192, 220, kTextAlignment.center)
+    gfx.drawTextAligned("* A confirm * B switch", 192, 220, kTextAlignment.center)
 end
 
 function H.up(self)
