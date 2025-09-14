@@ -1,4 +1,3 @@
--- path: Source/scenes/dialog_nodes/check_node.lua
 import "CoreLibs/graphics"
 local gfx = playdate.graphics
 
@@ -37,8 +36,8 @@ function H.draw(self, x, y, w, h)
     if self.mode == "diceSelect" then
         gfx.drawText(string.format("Select Risk Dice (0-2): %d", self.riskDiceCount), x + 8, y + 8)
         gfx.drawText(string.format("Misfortune: %d", misfortune), x + 8, y + 28)
-        gfx.drawText("Use up/down to choose, A to roll, B to menu.", x + 8, y + 48)
-        gfx.drawTextAligned("* A roll * B menu", 192, 220, kTextAlignment.center)
+        gfx.drawText("Use up/down to choose, A to roll, B to switch.", x + 8, y + 48)
+        gfx.drawTextAligned("* A roll * B switch", 192, 220, kTextAlignment.center)
 
     elseif self.mode == "diceResult" then
         local r = self.testResult
@@ -56,15 +55,15 @@ function H.draw(self, x, y, w, h)
             end
             gfx.drawText(misText, x + 8, yy)
         end
-        gfx.drawTextAligned("* A continue * B menu", 192, 220, kTextAlignment.center)
+        gfx.drawTextAligned("* A continue * B switch", 192, 220, kTextAlignment.center)
 
     else
         local infoText = string.format("Test: %s vs %d (d6 + stat)", skillName, difficultyValue)
         local diceInfo = string.format("Dice: %d (stat) + Risk ? | Misfortune: %d", baseStat, misfortune)
         gfx.drawText(infoText, x + 8, y + 8)
         gfx.drawText(diceInfo, x + 8, y + 28)
-        gfx.drawText("Press A to select Risk Dice, B to menu.", x + 8, y + 48)
-        gfx.drawTextAligned("* A select * B menu", 192, 220, kTextAlignment.center)
+        gfx.drawText("Press A to select Risk Dice, B to switch.", x + 8, y + 48)
+        gfx.drawTextAligned("* A select * B switch", 192, 220, kTextAlignment.center)
     end
 end
 
