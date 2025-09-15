@@ -6,10 +6,10 @@ DIALOG_01 = {
 
 	-- 2: Main hub choice
 	{ id = 2,  type = "choice", prompt = "Co robisz?", options = {
-		{ label = "Rozejrzyj sie",                target = 5 },
-		{ label = "Krzyknij o pomoc",             target = 9 },
-		{ label = "Sprobuj otworzyc drzwi",       target = 12 },
-		{ label = "Pracuj nad soba (trening)",    target = 20 },
+			{ label = "Rozejrzyj sie",                target = 5 },
+			{ label = "Krzyknij o pomoc",             target = 9 },
+			{ label = "Sprobuj otworzyc drzwi",       target = 12 },
+			{ label = "Pracuj nad soba (trening)",    target = 20 },
 	}},
 
 	{ id = 3,  type = "line",   speaker = "Narrator", text = "(buffer)" },
@@ -17,8 +17,10 @@ DIALOG_01 = {
 
 	-- 5
 	{ id = 5,  type = "line",   speaker = "Ty",       text = "Rozgladam sie po celi.",                                   target = 6 },
-	{ id = 6,  type = "item",   speaker = "Narrator", item = "Klucz", text = "W rogu znajdujesz stary klucz.",           target = 7 },
-	{ id = 7,  type = "item",   speaker = "Narrator", item = "Drut",  text = "Za pryczem lezy cienki drut. Moze sie przydac.", target = 8 },
+	-- Acquire the key (Klucz) with id "key"
+	{ id = 6,  type = "item",   speaker = "Narrator", item = "key",  text = "W rogu znajdujesz stary klucz.",           target = 7 },
+	-- Acquire the wire (Drut) with id "wire"
+	{ id = 7,  type = "item",   speaker = "Narrator", item = "wire", text = "Za pryczem lezy cienki drut. Moze sie przydac.", target = 8 },
 	{ id = 8,  type = "line",   speaker = "Narrator", text = "Wroc do drzwi.",                                            target = 2 },
 
 	-- 9
@@ -28,35 +30,35 @@ DIALOG_01 = {
 
 	-- 12
 	{ id = 12, type = "choice", prompt = "Jak chcesz otworzyc drzwi?", options = {
-		{ label = "Uzyj klucza",           target = 13, requireItem = "Klucz" },
-		{ label = "Wywaz drzwi",           target = 15, requireStat = { name = "Strength", value = 2 } },
-		{ label = "Podwaz zamek drutem",   target = 17, requireItem = "Drut", requireStat = { name = "Cunning", value = 3 } },
-		{ label = "Zrezygnuj",             target = 2 },
+			{ label = "Uzyj klucza",           target = 13, requireItem = "key" },
+			{ label = "Wywaz drzwi",           target = 15, requireStat = { name = "Strength", value = 2 } },
+			{ label = "Podwaz zamek drutem",   target = 17, requireItem = "wire", requireStat = { name = "Cunning", value = 3 } },
+			{ label = "Zrezygnuj",             target = 2 },
 	}},
 	{ id = 13, type = "line",   speaker = "Ty",       text = "Przykladasz klucz do zamka.",                                target = 14 },
 	{ id = 14, type = "line",   speaker = "Narrator", text = "Zamek kliknal i drzwi sie otworzyly!",                       target = 19 },
 
 	-- 15
 	{ id = 15, type = "check",  skill = "Strength", difficulty = 1,
-		success = {
-			{ type = "midCheckLine", speaker = "Narrator", text = "Uderzasz z calej sily i drzwi ustepuja." },
-			{ type = "line",         speaker = "Narrator", text = "Jestes wolny!", target = 19 },
-		},
-		fail = {
-			{ type = "line",         speaker = "Narrator", text = "Probujesz, ale drzwi ani drgna." },
-		}
+			success = {
+					{ type = "midCheckLine", speaker = "Narrator", text = "Uderzasz z calej sily i drzwi ustepuja." },
+					{ type = "line",         speaker = "Narrator", text = "Jestes wolny!", target = 19 },
+			},
+			fail = {
+					{ type = "line",         speaker = "Narrator", text = "Probujesz, ale drzwi ani drgna." },
+			}
 	},
 	{ id = 16, type = "line",   speaker = "Narrator", text = "Wracasz do srodka.",                                         target = 2 },
 
 	-- 17 (Cunning path)
 	{ id = 17, type = "check",  skill = "Cunning", difficulty = 2,
-		success = {
-			{ type = "midCheckLine", speaker = "Narrator", text = "Zamek ustepuje po chwili." },
-			{ type = "line",         speaker = "Narrator", text = "Drzwi otwarte!", target = 19 },
-		},
-		fail = {
-			{ type = "line",         speaker = "Narrator", text = "Nie potrafisz otworzyc zamka drutem." },
-		}
+			success = {
+					{ type = "midCheckLine", speaker = "Narrator", text = "Zamek ustepuje po chwili." },
+					{ type = "line",         speaker = "Narrator", text = "Drzwi otwarte!", target = 19 },
+			},
+			fail = {
+					{ type = "line",         speaker = "Narrator", text = "Nie potrafisz otworzyc zamka drutem." },
+			}
 	},
 	{ id = 18, type = "line",   speaker = "Narrator", text = "Wracasz do srodka.",                                         target = 2 },
 
@@ -68,11 +70,11 @@ DIALOG_01 = {
 	------------------------------------------------------------------------
 
 	{ id = 20, type = "choice", prompt = "Jak chcesz trenowac?", options = {
-		{ label = "Pompki i przysiady (+1 Strength)",               target = 21 },
-		{ label = "Analizuj zamek (+1 Cunning)",                     target = 24 },
-		{ label = "Improwizuj napiecie ramion (+1 Strength)",        target = 27 },
-		{ label = "Trenuj wyczucie zatrzasku (+1 Cunning)",          target = 30 },
-		{ label = "Wroc",                                            target = 2 },
+			{ label = "Pompki i przysiady (+1 Strength)",               target = 21 },
+			{ label = "Analizuj zamek (+1 Cunning)",                     target = 24 },
+			{ label = "Improwizuj napiecie ramion (+1 Strength)",        target = 27 },
+			{ label = "Trenuj wyczucie zatrzasku (+1 Cunning)",          target = 30 },
+			{ label = "Wroc",                                            target = 2 },
 	}},
 
 	-- 21
