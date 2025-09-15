@@ -39,8 +39,15 @@ function H.a(self)
         self.textPos = #self.currentText
         self.typing = false
     else
-        if self.node.item then table.insert(self.inventory, self.node.item) end
-        if self.node.target ~= nil then self:jumpTo(self.node.target) else self:advance() end
+        if self.node.item and self.inventory and self.inventory.add then
+            -- Add by id via Inventory
+            self.inventory:add(self.node.item)
+        end
+        if self.node.target ~= nil then
+            self:jumpTo(self.node.target)
+        else
+            self:advance()
+        end
     end
 end
 
