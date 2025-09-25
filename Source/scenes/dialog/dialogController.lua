@@ -36,7 +36,7 @@ function DialogController:up()
 	local node = self.state.node
 	if not node then return end
 	if node.type == "choice" and self.state.mode == nil then
-		self.state:choice3Prev()
+		self.state:choicePrev()
 	elseif node.type == "check" and self.state.mode == "diceSelect" then
 		self.state:decreaseRisk()
 	end
