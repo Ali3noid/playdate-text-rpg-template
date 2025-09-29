@@ -1,5 +1,6 @@
 import "CoreLibs/object"
 import "systems/checks"
+import "systems/combinator"
 
 -- Holds all dialog state, routing and pure logic (no drawing).
 class('DialogState').extends()
@@ -45,6 +46,9 @@ function DialogState:init(cfg)
 	self.script    = assert(cfg.script, "DialogState: missing script")
 	self.stats     = cfg.stats or {}
 	self.inventory = cfg.inventory or {}
+	self.combiner  = ItemCombiner()
+	-- track selection for item combination
+	self.firstSelectedId = nil
 
 	self.idToPos = buildIdMap(self.script)
 
@@ -375,6 +379,54 @@ function DialogState:inventorySelectNext()
 	if count == 0 then self.inventorySelectedIndex = 1 return end
 	if not self.inventorySelectedIndex then self.inventorySelectedIndex = 1 return end
 	if self.inventorySelectedIndex < count then self.inventorySelectedIndex += 1 end
+end
+
+-- Handle the A button when in the inventory tab.
+-- First press selects an item; second press attempts combination.
+function DialogState:inventoryHandleConfirm()
+	local ids = self:inventoryIds()
+	local idx = self.inventorySelectedIndex or 1
+	local currentId = ids[idx]
+	if not currentId then return end
+
+	if not self.firstSelectedId then
+		self.firstSelectedId = currentId
+		print("[Combine] Selected '" .. currentId .. "'")
+		return
+	end
+
+	if self.firstSelectedId == currentId then
+		print("[Combine] Cannot combine item with itself")
+		self.firstSelectedId = nil
+		return
+	end
+
+	local resultId = self.combiner and self.combiner:attemptCombine(self.inventory, self.firstSelectedId, currentId) or nil
+	if resultId then
+		print(string.format("[Combine] %s + %s -> %s", self.firstSelectedId, currentId, resultId))
+		-- Optional: move cursor to the newly added result, so renderer shows its proper name/description from items_01
+		local all = self:inventoryIds()
+		for i = 1, #all do
+			if all[i] == resultId then
+				self.inventorySelectedIndex = i
+				break
+			end
+		end
+	else
+		print("[Combine] These items cannot be combined")
+	end
+
+	self.firstSelectedId = nil
+end
+
+-- Optional: cancel helper for B in inventory
+function DialogState:inventoryCancel()
+	if self.firstSelectedId then
+		self.firstSelectedId = nil
+		print("[Combine] Selection cleared")
+		return true
+	end
+	return false
 end
 
 -- ===== Small helpers =====

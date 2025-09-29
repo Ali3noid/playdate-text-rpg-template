@@ -1,87 +1,154 @@
 import "CoreLibs/graphics"
+import "data/items_01" -- fallback item info table (expected global ITEMS_01)
+
 local gfx = playdate.graphics
 
 InventoryPanel = InventoryPanel or {}
 
-function InventoryPanel.draw(state, x, y, w, h)
-	-- Panel frame
+-- ===== Utils (local only) =====
+
+local function clampInt(v, lo, hi)
+	if v < lo then return lo end
+	if v > hi then return hi end
+	return v
+end
+
+-- Compute a visible window so the selected index stays on screen.
+local function computeWindow(selected, total, maxVisible)
+	if total <= maxVisible then
+		return 1, total
+	end
+	local half = math.floor((maxVisible - 1) / 2)
+	local start = selected - half
+	if start < 1 then start = 1 end
+	local maxStart = math.max(1, total - maxVisible + 1)
+	if start > maxStart then start = maxStart end
+	return start, math.min(total, start + maxVisible - 1)
+end
+
+-- Try to get item info from state, then fall back to ITEMS_01 (imported).
+local function resolveItemInfo(state, itemId)
+	if not itemId then return nil end
+
+	-- Preferred: a helper on state (if implemented)
+	if state.itemInfoById and type(state.itemInfoById) == "function" then
+		local info = state:itemInfoById(itemId)
+		if info then return info end
+	end
+
+	-- Fallback to ITEMS_01 (global from data/items_01)
+	if ITEMS_01 and ITEMS_01[itemId] then
+		return ITEMS_01[itemId]
+	end
+
+	-- Last resort: synthesize minimal info
+	return { id = itemId, name = tostring(itemId), description = "" }
+end
+
+-- ===== Public API =====
+
+-- Draw inventory in a single panel box area (x, y, w, h).
+function InventoryPanel.draw(state, boxX, boxY, boxW, boxH)
+	-- Panel background
 	gfx.setColor(gfx.kColorWhite)
-	gfx.fillRoundRect(x, y, w, h, 8)
+	gfx.fillRoundRect(boxX, boxY, boxW, boxH, 8)
 	gfx.setColor(gfx.kColorBlack)
-	gfx.drawRoundRect(x, y, w, h, 8)
+	gfx.drawRoundRect(boxX, boxY, boxW, boxH, 8)
+	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 
-	-- Left column: list
-	local listX = x + 8
-	local listY = y + 8
-	local listW = math.floor((w - 24) * 0.45)
-	local listH = h - 16
-	local lineH = 14
-	gfx.drawRoundRect(listX, listY, listW, listH, 6)
+	-- Header: show selected-for-combine if any
+	local header = state.firstSelectedId
+		and ("Inventory (selected: " .. tostring(state.firstSelectedId) .. ")")
+		or  "Inventory (press A to select/combine)"
+	gfx.drawTextInRect(header, boxX + 8, boxY + 8, boxW - 16, 16)
 
-	local ids = state:inventoryIds()
-	local count = #ids
+	-- Geometry
+	local ids           = state:inventoryIds()
+	local count         = #ids
+	local listTopY      = boxY + 32
+	local rowH          = 18
+	local padX          = 4
+	local textOffX      = 10
 
-	-- Clamp selection
-	if count == 0 then
-		state.inventorySelectedIndex = 1
-	else
-		if state.inventorySelectedIndex < 1 then state.inventorySelectedIndex = 1 end
-		if state.inventorySelectedIndex > count then state.inventorySelectedIndex = count end
-	end
+	-- Reserve a description box at the bottom of the panel
+	local descMarginTop = 8
+	local descH         = 44              -- height for item name + several lines of text
+	local descY         = boxY + boxH - descH - 8
 
-	local maxVisible = math.max(1, math.floor(listH / lineH))
-	local firstVisible = math.max(1, state.inventorySelectedIndex - math.floor(maxVisible / 2))
-	if firstVisible + maxVisible - 1 > count then
-		firstVisible = math.max(1, count - maxVisible + 1)
-	end
-	local lastVisible = math.min(count, firstVisible + maxVisible - 1)
+	-- List area ends before the description box
+	local listBottomY   = descY - descMarginTop
+	local listHeight    = math.max(0, listBottomY - listTopY)
+	local maxVisible    = math.max(1, math.floor(listHeight / rowH))
 
-	local yCursor = listY + 2
-	if count == 0 then
-		gfx.drawText("(Inventory is empty)", listX + 6, yCursor)
-	else
-		for i = firstVisible, lastVisible do
-			local itemId = ids[i]
-			local info = state:itemInfoById(itemId)
-			local name = (info and info.name) or tostring(itemId)
-			if i == state.inventorySelectedIndex then
-				gfx.fillRoundRect(listX + 3, yCursor - 1, listW - 6, lineH, 4)
-				gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-				gfx.drawText(name, listX + 8, yCursor)
-				gfx.setImageDrawMode(gfx.kDrawModeCopy)
-			else
-				gfx.drawText(name, listX + 8, yCursor)
-			end
-			yCursor = yCursor + lineH
-			if yCursor > listY + listH - lineH then break end
+	-- Selected index and window
+	local selectedIdx   = clampInt(state.inventorySelectedIndex or 1, 1, math.max(1, count))
+	local fromIdx, toIdx = computeWindow(selectedIdx, count, maxVisible)
+
+	-- Draw list rows
+	for i = fromIdx, toIdx do
+		local itemId          = ids[i]
+		local isCursor        = (i == selectedIdx)
+		local isFirstSelected = (state.firstSelectedId == itemId)
+
+		-- Reset per-row draw state
+		gfx.setImageDrawMode(gfx.kDrawModeCopy)
+		playdate.graphics.setDitherPattern(1.0, gfx.image.kDitherTypeBayer8x8)
+		gfx.setColor(gfx.kColorBlack)
+
+		local rowY = listTopY + (i - fromIdx) * rowH
+
+		-- 1) Solid cursor background with inverted text
+		if isCursor then
+			gfx.fillRoundRect(boxX + padX, rowY - 2, boxW - 2 * padX, rowH, 6)
+			gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 		end
-		-- Scroll arrows
-		if firstVisible > 1 then
-			gfx.fillTriangle(listX + listW - 14, listY + 6, listX + listW - 6, listY + 6, listX + listW - 10, listY + 1)
+
+		-- 2) Dither overlay for "first selected" (combine source)
+		if isFirstSelected then
+			local inset = isCursor and 2 or 0
+			playdate.graphics.setDitherPattern(0.5, gfx.image.kDitherTypeBayer8x8)
+			gfx.fillRoundRect(
+				boxX + padX + inset,
+				rowY - 2 + inset,
+				(boxW - 2 * padX) - inset * 2,
+				rowH - inset * 2,
+				6
+			)
+			playdate.graphics.setDitherPattern(1.0, gfx.image.kDitherTypeBayer8x8)
 		end
-		if lastVisible < count then
-			local ay = listY + listH - 6
-			gfx.fillTriangle(listX + listW - 14, ay, listX + listW - 6, ay, listX + listW - 10, ay + 5)
-		end
+
+		-- 3) Label (item id or name)
+		gfx.drawText(resolveItemInfo(state, selectedId).name , boxX + textOffX, rowY)
+
+		-- Ensure clean state for next row
+		gfx.setImageDrawMode(gfx.kDrawModeCopy)
 	end
 
-	-- Right column: description
-	local descX = listX + listW + 8
-	local descW = w - (descX - x) - 8
-	gfx.drawRoundRect(descX, listY, descW, listH, 6)
+	-- Draw description box
+	gfx.setColor(gfx.kColorWhite)
+	gfx.fillRoundRect(boxX + 6, descY, boxW - 12, descH, 6)
+	gfx.setColor(gfx.kColorBlack)
+	gfx.drawRoundRect(boxX + 6, descY, boxW - 12, descH, 6)
 
-	local descText = ""
-	if count > 0 then
-		local selId   = ids[state.inventorySelectedIndex]
-		local selInfo = state:itemInfoById(selId)
-		local selName = (selInfo and selInfo.name) or tostring(selId)
-		local selDesc = (selInfo and selInfo.description) or ""
-		gfx.drawText("* " .. selName, descX + 8, listY + 6)
-		gfx.drawTextInRect(selDesc, descX + 8, listY + 24, descW - 16, listH - 32)
-	else
-		gfx.drawTextInRect("(Select items to see their descriptions here.)",
-			descX + 8, listY + 8, descW - 16, listH - 16)
+	-- Resolve selected item info (name + description)
+	local selectedId   = (count > 0) and ids[selectedIdx] or nil
+	local info         = resolveItemInfo(state, selectedId)
+	local nameText     = info and info.name or (selectedId or "")
+	local descText     = info and info.description or ""
+
+	-- Draw name (single line) and wrapped description
+	local nameY = descY + 6
+	local textX = boxX + 12
+	gfx.drawText(tostring(nameText or ""), textX, nameY)
+
+	local wrapY = nameY + 16
+	local wrapH = descY + descH - wrapY - 6
+	if wrapH > 0 then
+		gfx.drawTextInRect(tostring(descText or ""), textX, wrapY, (boxW - 24), wrapH)
 	end
 
-	gfx.drawTextAligned("* Up/Down select  * B back", 192, 220, kTextAlignment.center)
+	-- Footer: show combine hint or cancel
+	local footer = state.firstSelectedId and "* A combine with this * B cancel"
+									   or  "* A select/combine * B back"
+	gfx.drawTextAligned(footer, 192, 220, kTextAlignment.center)
 end

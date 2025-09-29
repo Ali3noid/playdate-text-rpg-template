@@ -13,4 +13,14 @@ ITEMS_01 = {
 		name = "Drut",
 		description = "Cienki drut, ktory moze posluzac do podwazenia zamka."
 	},
+	key_left = {
+		id = "key_left",
+		name = "Lewa polowa klucza",
+		description = "Lewa polowa zlamanego klucza."
+	},
+	key_right = {
+		id = "key_right",
+		name = "Prawa polowa klucza",
+		description = "Prawa polowa klucza."
+	}
 }

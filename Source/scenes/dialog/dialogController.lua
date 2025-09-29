@@ -59,6 +59,7 @@ end
 function DialogController:a()
 	if self.state.currentTab == "inventory" then
 		-- reserved for future use (use/equip/examine)
+		self.state:inventoryHandleConfirm()
 		return
 	end
 	local node = self.state.node
@@ -104,16 +105,25 @@ function DialogController:a()
 end
 
 function DialogController:b()
-	-- Clear transient dice UI
 	self.state:resetCheckUI()
 
-	-- Toggle tabs
+	-- Inventory cancel selection or toggle tabs
+	if self.state.currentTab == "inventory" then
+		if self.state:inventoryCancel() then
+			-- stay in inventory if we just cleared selection
+			return
+		end
+		-- no selection to cancel: go back to dialog tab
+		self.state.currentTab = "dialog"
+		return
+	end
+
+	-- From dialog -> inventory
 	if self.state.currentTab == "dialog" then
 		self.state.currentTab = "inventory"
 		if not self.state.inventorySelectedIndex or self.state.inventorySelectedIndex < 1 then
 			self.state.inventorySelectedIndex = 1
 		end
-	else
-		self.state.currentTab = "dialog"
+		return
 	end
 end

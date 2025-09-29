@@ -1,12 +1,11 @@
--- path: Source/systems/inventory.lua
 import "CoreLibs/object"
-import "data/items_01"   -- provides ITEMS_01
+import "data/items_01"
 
 -- Inventory class encapsulates item definitions and acquired items.
 -- Each item is defined by an id, name, and description.
 -- The inventory stores a list of item ids representing items the
--- player has collected. Methods are provided to add items, check
--- for possession, and retrieve item info.
+-- player has collected. Methods are provided to add items, remove items,
+-- check for possession, and retrieve item info.
 class('Inventory').extends()
 
 function Inventory:init(definitions)
@@ -23,6 +22,18 @@ function Inventory:add(itemId)
 	assert(itemId, "Inventory:add() requires itemId")
 	assert(self.items[itemId], "Inventory:add(): unknown item id \"" .. tostring(itemId) .. "\"")
 	table.insert(self.ids, itemId)
+end
+
+-- Remove the first occurrence of an item by id from the inventory.
+-- Does nothing if the item is not present.
+function Inventory:remove(itemId)
+	assert(itemId, "Inventory:remove() requires itemId")
+	for index, id in ipairs(self.ids) do
+		if id == itemId then
+			table.remove(self.ids, index)
+			return
+		end
+	end
 end
 
 -- Check whether the player currently possesses an item.
