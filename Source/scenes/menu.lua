@@ -1,6 +1,7 @@
 import "CoreLibs/object"
 import "CoreLibs/graphics"
-import "data/dialog_01"  -- added
+import "data/dialog_01"
+import "data/dialog_combine_test"
 
 local gfx <const> = playdate.graphics
 
@@ -47,7 +48,7 @@ function Menu:a()
 	local choice = self.items[self.index]
 	if choice == "New Game" then
 		print("[Menu] New Game selected")
-		self.switch("dialog", { script = DIALOG_01, stats = { Speech = 2, Cunning = 1, Strength = 0 } })
+		self.switch("dialog", { script = DIALOG_COMBINE_TEST, stats = { Speech = 2, Cunning = 1, Strength = 0 } })
 	elseif choice == "Options" then
 		print("[Menu] Options selected")
 	elseif choice == "Quit" then
