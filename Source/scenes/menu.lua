@@ -2,6 +2,7 @@ import "CoreLibs/object"
 import "CoreLibs/graphics"
 import "data/dialog_01"
 import "data/dialog_combine_test"
+import "data/dialog_image_test"
 
 local gfx <const> = playdate.graphics
 
@@ -9,7 +10,7 @@ class('Menu').extends()
 
 function Menu:init(config)
 	self.switch = assert(config and config.switch, "Menu: missing switch()")
-	self.items = { "New Game", "Options", "Quit" }
+	self.items = { "New Game", "Image Test", "Options", "Quit" }
 	self.index = 1
 end
 
@@ -49,6 +50,9 @@ function Menu:a()
 	if choice == "New Game" then
 		print("[Menu] New Game selected")
 		self.switch("dialog", { script = DIALOG_COMBINE_TEST, stats = { Speech = 2, Cunning = 1, Strength = 0 } })
+	elseif choice == "Image Test" then
+		print("[Menu] Image Test selected")
+		self.switch("dialog", { script = DIALOG_IMAGE_TEST, stats = { Speech = 1, Cunning = 1, Strength = 1 } })
 	elseif choice == "Options" then
 		print("[Menu] Options selected")
 	elseif choice == "Quit" then
