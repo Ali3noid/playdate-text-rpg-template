@@ -3,7 +3,6 @@ import "CoreLibs/graphics"
 import "scenes/dialog/dialogState"
 import "scenes/dialog/dialogRenderer"
 
--- Orchestrates the scene: wires state + renderer, delegates input.
 class('DialogController').extends()
 
 function DialogController:init(configOrSwitch, script, stats, inventory)
@@ -25,8 +24,6 @@ function DialogController:leave() end
 function DialogController:update()
 	self.renderer:drawFrame()
 end
-
--- Input maps to state ops; renderer re-reads state each frame.
 
 function DialogController:up()
 	if self.state.currentTab == "inventory" then
@@ -58,7 +55,6 @@ end
 
 function DialogController:a()
 	if self.state.currentTab == "inventory" then
-		-- reserved for future use (use/equip/examine)
 		self.state:inventoryHandleConfirm()
 		return
 	end
@@ -101,24 +97,24 @@ function DialogController:a()
 
 	elseif t == "check" then
 		self.state:checkAdvanceStages()
+
+	elseif t == "image" then
+		-- Fullscreen image: A continues (honor explicit target if set)
+		self.state:routeOrAdvance()
 	end
 end
 
 function DialogController:b()
 	self.state:resetCheckUI()
 
-	-- Inventory cancel selection or toggle tabs
 	if self.state.currentTab == "inventory" then
 		if self.state:inventoryCancel() then
-			-- stay in inventory if we just cleared selection
 			return
 		end
-		-- no selection to cancel: go back to dialog tab
 		self.state.currentTab = "dialog"
 		return
 	end
 
-	-- From dialog -> inventory
 	if self.state.currentTab == "dialog" then
 		self.state.currentTab = "inventory"
 		if not self.state.inventorySelectedIndex or self.state.inventorySelectedIndex < 1 then

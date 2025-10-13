@@ -89,6 +89,7 @@ function InventoryPanel.draw(state, boxX, boxY, boxW, boxH)
 		local itemId          = ids[i]
 		local isCursor        = (i == selectedIdx)
 		local isFirstSelected = (state.firstSelectedId == itemId)
+		local selectedId   = (count > 0) and ids[selectedIdx] or nil
 
 		-- Reset per-row draw state
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
