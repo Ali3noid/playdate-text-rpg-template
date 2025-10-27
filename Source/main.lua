@@ -44,6 +44,8 @@ function pd.upButtonDown()    if activeScene and activeScene.up then activeScene
 function pd.downButtonDown()  if activeScene and activeScene.down then activeScene:down() end end
 function pd.AButtonDown()     if activeScene and activeScene.a then activeScene:a() end end
 function pd.BButtonDown()     if activeScene and activeScene.b then activeScene:b() end end
+function pd.leftButtonDown()     if activeScene and activeScene.left then activeScene:left() end end
+function pd.rightButtonDown()     if activeScene and activeScene.right then activeScene:right() end end
 
 -- Boot to menu
 switchScene("menu")

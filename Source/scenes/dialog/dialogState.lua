@@ -168,7 +168,9 @@ function DialogState:logNode()
 
 	if t == "line" or t == "item" or t == "stat" or t == "midCheckLine" then
 		local speaker = self.node.speaker or "-"
-		local textPrev = (self.node.text and #self.node.text > 40) and (self.node.text:sub(1,37).."...") or (self.node.text or "")
+		local textPrev = (self.node.text and #self.node.text > 40)
+			and (self.node.text:sub(1,37).."...")
+			or (self.node.text or "")
 		local targetStr = formatTarget(self.node.target)
 		if t == "item" then
 			local itemName = self.node.item or "-"
@@ -437,4 +439,175 @@ function DialogState:routeOrAdvance()
 	else
 		self:advance()
 	end
+end
+
+-- Reset lock UI state when entering a lock node.
+function DialogState:resetLockUIFromNode()
+	self.lockSlotIndex = 1
+	local node = self.node or {}
+	local slotCount = node.slots or ((node.solution and #node.solution) or 3)
+	self.lockValues = {}
+	local initialValues = node.initial or {}
+	for i = 1, slotCount do
+		self.lockValues[i] = initialValues[i] or 1
+	end
+end
+
+-- Move selection to the previous dial
+function DialogState:lockSlotPrev()
+    if not (self.node and self.node.type == "lock") then return end
+    local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
+    local idx = (self.lockSlotIndex or 1) - 1
+    if idx < 1 then
+        idx = slots
+    end
+    self.lockSlotIndex = idx
+end
+
+-- Move selection to the next dial
+function DialogState:lockSlotNext()
+    if not (self.node and self.node.type == "lock") then return end
+    local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
+    local idx = (self.lockSlotIndex or 1) + 1
+    if idx > slots then
+        idx = 1
+    end
+    self.lockSlotIndex = idx
+end
+
+-- Rotate the current dial forward.
+function DialogState:lockValueNext()
+	if not (self.node and self.node.type == "lock") then
+		return
+	end
+	if self.lockValues == nil then
+		self:resetLockUIFromNode()
+	end
+	if self.lockValues == nil then
+        self:resetLockUIFromNode()
+    end
+	local symbolCount = (self.node.symbols and #self.node.symbols) or 10
+	local index = self.lockSlotIndex or 1
+	local value = (self.lockValues[index] or 1) + 1
+	if value > symbolCount then
+		value = 1
+	end
+	self.lockValues[index] = value
+end
+
+-- Rotate the current dial backward.
+function DialogState:lockValuePrev()
+	if not (self.node and self.node.type == "lock") then
+		return
+	end
+	if self.lockValues == nil then
+		self:resetLockUIFromNode()
+	end
+	if self.lockValues == nil then
+		self:resetLockUIFromNode()
+	end
+	local symbolCount = (self.node.symbols and #self.node.symbols) or 10
+	local index = self.lockSlotIndex or 1
+	local value = (self.lockValues[index] or 1) - 1
+	if value < 1 then
+		value = symbolCount
+	end
+	self.lockValues[index] = value
+end
+
+-- Move to the next dial or confirm on the last dial.
+function DialogState:lockAdvanceOrConfirm()
+	if not (self.node and self.node.type == "lock") then
+		return
+	end
+	local slotCount = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
+	if (self.lockSlotIndex or 1) < slotCount then
+		self.lockSlotIndex = (self.lockSlotIndex or 1) + 1
+	else
+		self:lockConfirm()
+	end
+end
+
+-- Validate the entered combination and branch accordingly.
+function DialogState:lockConfirm()
+    -- Ensure lockValues are initialised before checking the combination.
+    -- If lockValues is nil, reset the lock UI from the current node.
+    if self.lockValues == nil then
+        if self.node and self.node.type == "lock" then
+            self:resetLockUIFromNode()
+        else
+            -- fallback: avoid nil indexing by setting to an empty table
+            self.lockValues = {}
+        end
+    end
+    local node = self.node or {}
+	local symbols = node.symbols or { "0","1","2","3","4","5","6","7","8","9" }
+	local solution = node.solution or {}
+	local slotCount = node.slots or (#solution > 0 and #solution or 3)
+
+	-- Check if entered values match the solution.
+	local success = true
+	for i = 1, slotCount do
+		local expected = solution[i]
+		local currentIndex = self.lockValues[i] or 1
+		if type(expected) == "number" then
+			if currentIndex ~= expected then
+				success = false
+				break
+			end
+		else
+			local currentLabel = symbols[currentIndex]
+			if currentLabel ~= expected then
+				success = false
+				break
+			end
+		end
+	end
+
+	local infoText = success
+		and (node.successText or "The lock clicks and opens.")
+		or (node.failText or "The mechanism resets itself.")
+	local infoLine = { type = "line", speaker = "Narrator", text = infoText }
+	local branchSequence = success and node.success or node.fail
+	local defaultTarget = success and node.successTarget or node.failTarget
+
+	-- Insert the informational line and the branch sequence into the script.
+	local splice = {}
+	table.insert(splice, infoLine)
+	if branchSequence ~= nil then
+		for _, element in ipairs(branchSequence) do
+			table.insert(splice, element)
+		end
+	end
+
+	-- Determine whether the branch contains explicit routing.
+	local function sequenceHasRouting(seq)
+		if seq == nil then return false end
+		for _, item in ipairs(seq) do
+			if item.target then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- Attach default routing when no explicit target is provided.
+	if not sequenceHasRouting(branchSequence) and defaultTarget ~= nil then
+		local lastIndex = findLastRoutableIndex(branchSequence)
+		if lastIndex ~= nil then
+			branchSequence[lastIndex].target = defaultTarget
+		else
+			infoLine.target = defaultTarget
+		end
+	end
+
+	-- Splice the new sequence into the script and rebuild id map.
+	for offset, element in ipairs(splice) do
+		table.insert(self.script, self.posIndex + offset, element)
+	end
+	self:rebuildIdMap()
+
+	-- Prepare for the next use.
+	self:resetLockUIFromNode()
+	self:advance()
 end

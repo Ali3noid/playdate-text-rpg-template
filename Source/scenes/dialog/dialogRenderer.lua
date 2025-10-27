@@ -6,6 +6,7 @@ import "scenes/dialog/panels/check_panel"
 import "scenes/dialog/panels/inventory_panel"
 import "scenes/dialog/panels/image_panel"
 import "scenes/dialog/panels/end_panel"
+import "scenes/dialog/panels/lock_panel"
 
 import "data/items_01"
 
@@ -160,7 +161,9 @@ function DialogRenderer:drawFrame()
 
 	elseif nodeType == "chapterEnd" then
 		EndPanel.draw(self.state, boxX, boxY, boxW, boxH)
-	
+
+	elseif nodeType == "lock" then
+		LockPanel.draw(self.state, boxX, boxY, boxW, boxH)
 	else
 		gfx.drawTextAligned("(Unknown node type)", 192, 120, kTextAlignment.center)
 	end

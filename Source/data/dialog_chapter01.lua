@@ -26,7 +26,9 @@ DIALOG_CHAPTER01 = {
 	  target = 6 },
 
 	{ id = 6, type = "line", speaker = "Narrator",
-	  text = "Pomieszczenie jest ciasne. Oprocz stolu widzisz krzeslo i ciezka, zelazna skrzynie. Sciany sa nagie, lecz pokryte brunatnymi zaciekami. Gdy przejedziesz po nich dlonia, masz wrazenie, ze ukladaja sie w twarz kobiety. Po mrugnieciu plama znika.",
+	  text = "Pomieszczenie jest ciasne. Oprocz stolu widzisz krzeslo i ciezka, zelazna skrzynie. Sciany sa nagie," ..
+	  "lecz pokryte brunatnymi zaciekami. Gdy przejedziesz po nich dlonia, masz wrazenie, ze ukladaja sie w twarz" ..
+	  "kobiety. Po mrugnieciu plama znika.",
 	  target = 7 },
 
 	{ id = 7, type = "image", path = "assets/images/door_first_room.png",
@@ -34,7 +36,8 @@ DIALOG_CHAPTER01 = {
 	  target = 8 },
 
 	{ id = 8, type = "line", speaker = "Narrator",
-	  text = "Drzwi nie maja klamki od srodka. Zamiast niej ktos wyzlobyl dziwny znak - odwrocony krzyz spleciony z galezia. Gdy go dotykasz, symbol pulsuje pod twoimi palcami.",
+	  text = "Drzwi nie maja klamki od srodka. Zamiast niej ktos wyzlobyl dziwny znak - odwrocony krzyz" ..
+	  "spleciony z galezia. Gdy go dotykasz, symbol pulsuje pod twoimi palcami.",
 	  target = 9 },
 
 	{ id = 9, type = "check", skill = "Runes", difficulty = 2,
@@ -79,14 +82,14 @@ DIALOG_CHAPTER01 = {
 	  target = 14 },
 
 	{ id = 14, type = "choice", prompt = "Co robisz dalej?",
-	  options = {
-		{ label = "Sprobuj wywazyc drzwi sila", target = 15 },
-		{ label = "Wsluchaj sie w glos zza sciany", target = 16 },
-		{ label = "Otworz wewnetrzne pudelko w skrzyni (zagadka)", target = 21 },
-		{ label = "Przyloz amulet do runy", lockedLabel = "Przyloz cos do runy (brak amuletu)", requireItem = "witch_talisman", target = 30 },
-		{ label = "Poloz sie z powrotem i zasnij", target = 17 },
-	  }
-	},
+		options = {
+		  { label = "Sprobuj wywazyc drzwi sila", target = 15 },
+		  { label = "Wsluchaj sie w glos zza sciany", target = 16 },
+		  { label = "Otworz wewnetrzne pudelko w skrzyni (zagadka)", target = 21 },
+		  { label = "Przyloz amulet do runy", lockedLabel = "Przyloz cos do runy (brak amuletu)", requireItem = "witch_talisman", target = 30 },
+		  { label = "Poloz sie z powrotem i zasnij", target = 17 },
+		}
+	  },
 
 	{ id = 15, type = "line", speaker = "Narrator",
 	  text = "Uderzasz barkiem w drzwi, ale te ani drgna. Czujesz tylko piekacy bol. Gdzieś w oddali slyszysz kobiecy glos wypowiadajacy inkantacje.",
@@ -118,50 +121,23 @@ DIALOG_CHAPTER01 = {
 	  target = 20 },
 
 	-- ========== Chest logic puzzle ==========
-	{ id = 21, type = "line", speaker = "Narrator",
-	  text = "Wnetrze skrzyni kryje mniejsze pudelko z trzema obrotowymi dyskami. Na kazdym widnieja symbole: lisc, plomien, popiol. Na wieku napis: 'to co zywi, to co oczyszcza, to co zostaje'.",
-	  target = 22 },
-
-	{ id = 22, type = "choice", prompt = "Dysk I - co ustawiasz?",
-	  options = {
-		{ label = "Lisc",   target = 23 },
-		{ label = "Plomien", target = 28 },
-		{ label = "Popiol",  target = 28 },
-	  }
+{ id = 21, type = "lock",
+	  prompt  = "Mniejsze pudelko ma trzy obrotowe dyski. Napis: 'to co zywi, to co oczyszcza, to co zostaje'.",
+	  symbols = { "Lisc", "Plomien", "Popiol" },
+	  slots   = 3,
+	  initial = { 1, 1, 1 },
+	  solution = { 1, 2, 3 }, -- Lisc -> Plomien -> Popiol
+	  successText = "Zapadka zwalnia z suchym kliknieciem.",
+	  success = {
+		{ type = "item", speaker = "Narrator", item = "witch_talisman",
+		  text = "W srodku znajduje sie Amulet Czarownicy. Gdy go chwytasz, runa jakby slabnie." },
+		{ type = "line", speaker = "Narrator",
+		  text = "Amulet lekko grzeje w dloni. Masz wrazenie, ze pragnie dotknac runy na drzwiach.",
+		  target = 14 },
+	  },
+	  failText = "Dyski zgrzytaja i wracaja do pozycji wyjsciowej. To nie ta kolejnosc.",
+	  failTarget = 21
 	},
-
-	{ id = 23, type = "choice", prompt = "Dysk II - co ustawiasz?",
-	  options = {
-		{ label = "Plomien", target = 24 },
-		{ label = "Lisc",    target = 28 },
-		{ label = "Popiol",  target = 28 },
-	  }
-	},
-
-	{ id = 24, type = "choice", prompt = "Dysk III - co ustawiasz?",
-	  options = {
-		{ label = "Popiol",  target = 25 },
-		{ label = "Plomien", target = 28 },
-		{ label = "Lisc",    target = 28 },
-	  }
-	},
-
-	{ id = 25, type = "line", speaker = "Narrator",
-	  text = "Zapadka zwalnia z suchym kliknieciem. Wieko mniejszego pudelka odskakuje.",
-	  target = 26 },
-
-	{ id = 26, type = "item", speaker = "Narrator",
-	  item = "witch_talisman",
-	  text = "W srodku znajduje sie Amulet Czarownicy. Gdy go chwytasz, znaki na drzwiach jakby na chwile slabna.",
-	  target = 27 },
-
-	{ id = 27, type = "line", speaker = "Narrator",
-	  text = "Amulet lekko grzeje w dloni. Masz wrazenie, ze pragnie dotknac runy na drzwiach.",
-	  target = 14 },
-
-	{ id = 28, type = "line", speaker = "Narrator",
-	  text = "Dyski ustawiaja sie sztywno, po czym mechanizm zgrzyta i wraca do pozycji wyjsciowej. To nie ta kolejnosc.",
-	  target = 21 },
 
 	-- ========== Using the reward on the door ==========
 	{ id = 30, type = "line", speaker = "Narrator",

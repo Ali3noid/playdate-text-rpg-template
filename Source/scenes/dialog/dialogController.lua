@@ -18,9 +18,6 @@ function DialogController:init(configOrSwitch, script, stats, inventory)
 	self.renderer = DialogRenderer(self.state)
 end
 
-function DialogController:enter() end
-function DialogController:leave() end
-
 function DialogController:update()
 	self.renderer:drawFrame()
 end
@@ -36,7 +33,23 @@ function DialogController:up()
 		self.state:choicePrev()
 	elseif node.type == "check" and self.state.mode == "diceSelect" then
 		self.state:decreaseRisk()
+	elseif node.type == "lock" then
+		self.state:lockValuePrev()
 	end
+end
+
+function DialogController:left()
+    local node = self.state.node
+    if node ~= nil and node.type == "lock" then
+        self.state:lockSlotPrev()
+    end
+end
+
+function DialogController:right()
+    local node = self.state.node
+    if node ~= nil and node.type == "lock" then
+        self.state:lockSlotNext()
+    end
 end
 
 function DialogController:down()
@@ -50,6 +63,9 @@ function DialogController:down()
 		self.state:choiceNext()
 	elseif node.type == "check" and self.state.mode == "diceSelect" then
 		self.state:increaseRisk()
+	elseif node.type == "lock" then
+		-- Rotate current dial forward.
+		self.state:lockValueNext()
 	end
 end
 
@@ -101,6 +117,10 @@ function DialogController:a()
 	elseif t == "image" then
 		-- Fullscreen image: A continues (honor explicit target if set)
 		self.state:routeOrAdvance()
+
+	elseif node.type == "lock" then
+		-- Confirm the entire combination immediately
+		self.state:lockConfirm()
 	end
 end
 
