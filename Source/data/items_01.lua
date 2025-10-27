@@ -22,5 +22,10 @@ ITEMS_01 = {
 		id = "key_right",
 		name = "Prawa polowa klucza",
 		description = "Prawa polowa klucza."
-	}
+	},
+	witch_talisman = {
+		id = "witch_talisman",
+		name = "Witch Talisman",
+		description = "A talisman made of bone and dry leaves. It reacts to the runic mark on the door."
+	},
 }
