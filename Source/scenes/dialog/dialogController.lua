@@ -35,21 +35,25 @@ function DialogController:up()
 		self.state:decreaseRisk()
 	elseif node.type == "lock" then
 		self.state:lockValuePrev()
+	elseif (node.type == "line" or node.type == "item" or node.type == "stat" or node.type == "midCheckLine") and (not self.state.typing) then
+		if (self.state.lineMaxScroll or 0) > 0 then
+			self.state:lineScroll(-1)
+		end
 	end
 end
 
 function DialogController:left()
-    local node = self.state.node
-    if node ~= nil and node.type == "lock" then
-        self.state:lockSlotPrev()
-    end
+	local node = self.state.node
+	if node ~= nil and node.type == "lock" then
+		self.state:lockSlotPrev()
+	end
 end
 
 function DialogController:right()
-    local node = self.state.node
-    if node ~= nil and node.type == "lock" then
-        self.state:lockSlotNext()
-    end
+	local node = self.state.node
+	if node ~= nil and node.type == "lock" then
+		self.state:lockSlotNext()
+	end
 end
 
 function DialogController:down()
@@ -64,8 +68,11 @@ function DialogController:down()
 	elseif node.type == "check" and self.state.mode == "diceSelect" then
 		self.state:increaseRisk()
 	elseif node.type == "lock" then
-		-- Rotate current dial forward.
 		self.state:lockValueNext()
+	elseif (node.type == "line" or node.type == "item" or node.type == "stat" or node.type == "midCheckLine") and (not self.state.typing) then
+		if (self.state.lineMaxScroll or 0) > 0 then
+			self.state:lineScroll(1)
+		end
 	end
 end
 
@@ -78,34 +85,16 @@ function DialogController:a()
 	if not node then return end
 
 	local t = node.type
-	if t == "line" then
+	if t == "line" or t == "item" or t == "stat" or t == "midCheckLine" then
 		if self.state.typing then
 			self.state:typingSkip()
 		else
-			self.state:routeOrAdvance()
-		end
-
-	elseif t == "midCheckLine" then
-		if self.state.typing then
-			self.state:typingSkip()
-		else
-			self.state:advance()
-		end
-
-	elseif t == "item" then
-		if self.state.typing then
-			self.state:typingSkip()
-		else
-			self.state:giveItemIfAny()
-			self.state:routeOrAdvance()
-		end
-
-	elseif t == "stat" then
-		if self.state.typing then
-			self.state:typingSkip()
-		else
-			self.state:applyStatDelta()
-			self.state:routeOrAdvance()
+			-- If long text is not fully scrolled yet, jump to bottom first.
+			if (self.state.lineMaxScroll or 0) > 0 and (self.state.lineScrollY or 0) < (self.state.lineMaxScroll or 0) then
+				self.state:lineScrollToBottom()
+			else
+				self.state:routeOrAdvance()
+			end
 		end
 
 	elseif t == "choice" then
@@ -115,11 +104,9 @@ function DialogController:a()
 		self.state:checkAdvanceStages()
 
 	elseif t == "image" then
-		-- Fullscreen image: A continues (honor explicit target if set)
 		self.state:routeOrAdvance()
 
 	elseif node.type == "lock" then
-		-- Confirm the entire combination immediately
 		self.state:lockConfirm()
 	end
 end
