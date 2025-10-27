@@ -78,6 +78,11 @@ function DialogState:init(cfg)
 	self.currentTab = "dialog"
 	self.inventorySelectedIndex = 1
 
+	-- Line scrolling (for long text)
+	self.lineScrollY     = 0
+	self.lineMaxScroll   = 0
+	self.lineScrollStep  = 12 -- pixels per step when using Up/Down
+
 	if self.idToPos[1] then
 		self:enterById(1)
 	else
@@ -109,6 +114,9 @@ function DialogState:enterByPos(pos)
 			self:prepareLine()
 		else
 			self.typing = false
+			-- also reset line scroll when leaving line-like nodes
+			self.lineScrollY   = 0
+			self.lineMaxScroll = 0
 		end
 	end
 	self:logNode()
@@ -136,6 +144,9 @@ function DialogState:prepareLine()
 	self.textPos      = 0
 	self.typing       = true
 	self.frameCounter = 0
+	-- reset scroll for new text
+	self.lineScrollY   = 0
+	self.lineMaxScroll = 0
 end
 
 function DialogState:typingTick()
@@ -154,6 +165,21 @@ end
 function DialogState:typingSkip()
 	self.textPos = #self.currentText
 	self.typing  = false
+end
+
+-- ===== Line scrolling (long text) =====
+
+-- Scroll by a number of "lines" (steps in pixels), negative for up, positive for down.
+function DialogState:lineScroll(steps)
+	local step = self.lineScrollStep or 12
+	local maxS = math.max(0, self.lineMaxScroll or 0)
+	self.lineScrollY = (self.lineScrollY or 0) + (steps * step)
+	if self.lineScrollY < 0 then self.lineScrollY = 0 end
+	if self.lineScrollY > maxS then self.lineScrollY = maxS end
+end
+
+function DialogState:lineScrollToBottom()
+	self.lineScrollY = math.max(0, self.lineMaxScroll or 0)
 end
 
 -- ===== Logging =====
@@ -455,24 +481,24 @@ end
 
 -- Move selection to the previous dial
 function DialogState:lockSlotPrev()
-    if not (self.node and self.node.type == "lock") then return end
-    local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
-    local idx = (self.lockSlotIndex or 1) - 1
-    if idx < 1 then
-        idx = slots
-    end
-    self.lockSlotIndex = idx
+	if not (self.node and self.node.type == "lock") then return end
+	local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
+	local idx = (self.lockSlotIndex or 1) - 1
+	if idx < 1 then
+		idx = slots
+	end
+	self.lockSlotIndex = idx
 end
 
 -- Move selection to the next dial
 function DialogState:lockSlotNext()
-    if not (self.node and self.node.type == "lock") then return end
-    local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
-    local idx = (self.lockSlotIndex or 1) + 1
-    if idx > slots then
-        idx = 1
-    end
-    self.lockSlotIndex = idx
+	if not (self.node and self.node.type == "lock") then return end
+	local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
+	local idx = (self.lockSlotIndex or 1) + 1
+	if idx > slots then
+		idx = 1
+	end
+	self.lockSlotIndex = idx
 end
 
 -- Rotate the current dial forward.
@@ -484,8 +510,8 @@ function DialogState:lockValueNext()
 		self:resetLockUIFromNode()
 	end
 	if self.lockValues == nil then
-        self:resetLockUIFromNode()
-    end
+		self:resetLockUIFromNode()
+	end
 	local symbolCount = (self.node.symbols and #self.node.symbols) or 10
 	local index = self.lockSlotIndex or 1
 	local value = (self.lockValues[index] or 1) + 1
@@ -530,17 +556,14 @@ end
 
 -- Validate the entered combination and branch accordingly.
 function DialogState:lockConfirm()
-    -- Ensure lockValues are initialised before checking the combination.
-    -- If lockValues is nil, reset the lock UI from the current node.
-    if self.lockValues == nil then
-        if self.node and self.node.type == "lock" then
-            self:resetLockUIFromNode()
-        else
-            -- fallback: avoid nil indexing by setting to an empty table
-            self.lockValues = {}
-        end
-    end
-    local node = self.node or {}
+	if self.lockValues == nil then
+		if self.node and self.node.type == "lock" then
+			self:resetLockUIFromNode()
+		else
+			self.lockValues = {}
+		end
+	end
+	local node = self.node or {}
 	local symbols = node.symbols or { "0","1","2","3","4","5","6","7","8","9" }
 	local solution = node.solution or {}
 	local slotCount = node.slots or (#solution > 0 and #solution or 3)
