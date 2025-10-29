@@ -85,16 +85,29 @@ function DialogController:a()
 	if not node then return end
 
 	local t = node.type
-	if t == "line" or t == "item" or t == "stat" or t == "midCheckLine" then
+	if t == "line" or t == "midCheckLine" then
 		if self.state.typing then
 			self.state:typingSkip()
 		else
-			-- If long text is not fully scrolled yet, jump to bottom first.
-			if (self.state.lineMaxScroll or 0) > 0 and (self.state.lineScrollY or 0) < (self.state.lineMaxScroll or 0) then
-				self.state:lineScrollToBottom()
-			else
-				self.state:routeOrAdvance()
+			self.state:routeOrAdvance()
+		end
+
+	elseif t == "item" then
+		if self.state.typing then
+			self.state:typingSkip()
+		else
+			self.state:giveItemIfAny()
+			self.state:routeOrAdvance()
+		end
+
+	elseif t == "stat" then
+		if self.state.typing then
+			self.state:typingSkip()
+		else
+			if self.state.applyStatDelta then
+				self.state:applyStatDelta()
 			end
+			self.state:routeOrAdvance()
 		end
 
 	elseif t == "choice" then

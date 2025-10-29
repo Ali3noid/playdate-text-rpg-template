@@ -47,7 +47,6 @@ function DialogState:init(cfg)
 	self.stats     = cfg.stats or {}
 	self.inventory = cfg.inventory or {}
 	self.combiner  = ItemCombiner()
-	-- track selection for item combination
 	self.firstSelectedId = nil
 
 	self.idToPos = buildIdMap(self.script)
@@ -114,7 +113,6 @@ function DialogState:enterByPos(pos)
 			self:prepareLine()
 		else
 			self.typing = false
-			-- also reset line scroll when leaving line-like nodes
 			self.lineScrollY   = 0
 			self.lineMaxScroll = 0
 		end
@@ -144,7 +142,6 @@ function DialogState:prepareLine()
 	self.textPos      = 0
 	self.typing       = true
 	self.frameCounter = 0
-	-- reset scroll for new text
 	self.lineScrollY   = 0
 	self.lineMaxScroll = 0
 end
@@ -169,7 +166,6 @@ end
 
 -- ===== Line scrolling (long text) =====
 
--- Scroll by a number of "lines" (steps in pixels), negative for up, positive for down.
 function DialogState:lineScroll(steps)
 	local step = self.lineScrollStep or 12
 	local maxS = math.max(0, self.lineMaxScroll or 0)
@@ -246,7 +242,6 @@ function DialogState:optionIsAvailable(opt)
 		if cur < need then return false end
 	end
 	if opt.requireItem then
-		-- Support either Inventory object (:has) or raw list
 		if type(self.inventory) == "table" and self.inventory.has and type(self.inventory.has) == "function" then
 			if not self.inventory:has(opt.requireItem) then return false end
 		else
@@ -432,7 +427,7 @@ function DialogState:inventoryHandleConfirm()
 	local resultId = self.combiner and self.combiner:attemptCombine(self.inventory, self.firstSelectedId, currentId) or nil
 	if resultId then
 		print(string.format("[Combine] %s + %s -> %s", self.firstSelectedId, currentId, resultId))
-		-- Optional: move cursor to the newly added result, so renderer shows its proper name/description from items_01
+		-- Optional: move cursor to the newly added result
 		local all = self:inventoryIds()
 		for i = 1, #all do
 			if all[i] == resultId then
@@ -457,6 +452,17 @@ function DialogState:inventoryCancel()
 	return false
 end
 
+-- ===== Stat helpers =====
+
+-- Apply the stat delta from a 'stat' node exactly once when leaving the node.
+function DialogState:applyStatDelta()
+	if not (self.node and self.node.type == "stat") then return end
+	local name  = self.node.stat
+	local delta = self.node.delta or 0
+	if not name then return end
+	self.stats[name] = (self.stats[name] or 0) + delta
+end
+
 -- ===== Small helpers =====
 
 function DialogState:routeOrAdvance()
@@ -467,7 +473,8 @@ function DialogState:routeOrAdvance()
 	end
 end
 
--- Reset lock UI state when entering a lock node.
+-- ===== Lock helpers =====
+
 function DialogState:resetLockUIFromNode()
 	self.lockSlotIndex = 1
 	local node = self.node or {}
@@ -479,7 +486,6 @@ function DialogState:resetLockUIFromNode()
 	end
 end
 
--- Move selection to the previous dial
 function DialogState:lockSlotPrev()
 	if not (self.node and self.node.type == "lock") then return end
 	local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
@@ -490,7 +496,6 @@ function DialogState:lockSlotPrev()
 	self.lockSlotIndex = idx
 end
 
--- Move selection to the next dial
 function DialogState:lockSlotNext()
 	if not (self.node and self.node.type == "lock") then return end
 	local slots = self.node.slots or ((self.node.solution and #self.node.solution) or 3)
@@ -501,7 +506,6 @@ function DialogState:lockSlotNext()
 	self.lockSlotIndex = idx
 end
 
--- Rotate the current dial forward.
 function DialogState:lockValueNext()
 	if not (self.node and self.node.type == "lock") then
 		return
@@ -521,7 +525,6 @@ function DialogState:lockValueNext()
 	self.lockValues[index] = value
 end
 
--- Rotate the current dial backward.
 function DialogState:lockValuePrev()
 	if not (self.node and self.node.type == "lock") then
 		return
@@ -541,7 +544,6 @@ function DialogState:lockValuePrev()
 	self.lockValues[index] = value
 end
 
--- Move to the next dial or confirm on the last dial.
 function DialogState:lockAdvanceOrConfirm()
 	if not (self.node and self.node.type == "lock") then
 		return
@@ -554,7 +556,6 @@ function DialogState:lockAdvanceOrConfirm()
 	end
 end
 
--- Validate the entered combination and branch accordingly.
 function DialogState:lockConfirm()
 	if self.lockValues == nil then
 		if self.node and self.node.type == "lock" then
@@ -568,7 +569,6 @@ function DialogState:lockConfirm()
 	local solution = node.solution or {}
 	local slotCount = node.slots or (#solution > 0 and #solution or 3)
 
-	-- Check if entered values match the solution.
 	local success = true
 	for i = 1, slotCount do
 		local expected = solution[i]
@@ -594,7 +594,6 @@ function DialogState:lockConfirm()
 	local branchSequence = success and node.success or node.fail
 	local defaultTarget = success and node.successTarget or node.failTarget
 
-	-- Insert the informational line and the branch sequence into the script.
 	local splice = {}
 	table.insert(splice, infoLine)
 	if branchSequence ~= nil then
@@ -603,7 +602,6 @@ function DialogState:lockConfirm()
 		end
 	end
 
-	-- Determine whether the branch contains explicit routing.
 	local function sequenceHasRouting(seq)
 		if seq == nil then return false end
 		for _, item in ipairs(seq) do
@@ -614,7 +612,6 @@ function DialogState:lockConfirm()
 		return false
 	end
 
-	-- Attach default routing when no explicit target is provided.
 	if not sequenceHasRouting(branchSequence) and defaultTarget ~= nil then
 		local lastIndex = findLastRoutableIndex(branchSequence)
 		if lastIndex ~= nil then
@@ -624,13 +621,11 @@ function DialogState:lockConfirm()
 		end
 	end
 
-	-- Splice the new sequence into the script and rebuild id map.
 	for offset, element in ipairs(splice) do
 		table.insert(self.script, self.posIndex + offset, element)
 	end
 	self:rebuildIdMap()
 
-	-- Prepare for the next use.
 	self:resetLockUIFromNode()
 	self:advance()
 end
