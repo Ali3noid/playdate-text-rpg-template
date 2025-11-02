@@ -137,9 +137,11 @@ function Menu:a()
 	local choice = self.items[self.selectedIndex]
 	if choice == "New Game" then
 		print("[Menu] New Game selected")
+		local inv = Inventory()
 		self.switch("dialog", {
 			script = DIALOG_CHAPTER01,
-			stats  = { Runes = 1, Curses = 1, Strength = 1 }
+			stats  = { Runes = 1, Curses = 1, Strength = 1 },
+			inventory = inv
 		})
 
 	elseif choice == "Image Test" then

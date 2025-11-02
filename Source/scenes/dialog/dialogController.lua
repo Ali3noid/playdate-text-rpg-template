@@ -35,7 +35,8 @@ function DialogController:up()
 		self.state:decreaseRisk()
 	elseif node.type == "lock" then
 		self.state:lockValuePrev()
-	elseif (node.type == "line" or node.type == "item" or node.type == "stat" or node.type == "midCheckLine") and (not self.state.typing) then
+	elseif (node.type == "line" or node.type == "item" or node.type == "stat" or node.type == "midCheckLine")
+	 and (not self.state.typing) then
 		if (self.state.lineMaxScroll or 0) > 0 then
 			self.state:lineScroll(-1)
 		end
@@ -69,7 +70,8 @@ function DialogController:down()
 		self.state:increaseRisk()
 	elseif node.type == "lock" then
 		self.state:lockValueNext()
-	elseif (node.type == "line" or node.type == "item" or node.type == "stat" or node.type == "midCheckLine") and (not self.state.typing) then
+	elseif (node.type == "line" or node.type == "item" or node.type == "stat" or node.type == "midCheckLine")
+	 and (not self.state.typing) then
 		if (self.state.lineMaxScroll or 0) > 0 then
 			self.state:lineScroll(1)
 		end

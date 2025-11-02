@@ -1,9 +1,8 @@
--- path: data/dialog_chapter01.lua
-
 DIALOG_CHAPTER01 = {
 
 	{ id = 1, type = "line", speaker = "Narrator",
-	  text = "Budzi cie chlod. Lezysz na czyms twardym i wilgotnym. Powietrze pachnie stechlizna, jakbys spala w piwnicy, do ktorej od lat nikt nie zagladal.",
+	  text = "Budzi cie chlod. Lezysz na czyms twardym i wilgotnym. Powietrze pachnie stechlizna, jakbys" ..
+	   "spala w piwnicy, do ktorej od lat nikt nie zagladal.",
 	  target = 2 },
 
 	{ id = 2, type = "image", path = "assets/images/lamp_first_room.png",
@@ -11,7 +10,8 @@ DIALOG_CHAPTER01 = {
 	  target = 3 },
 
 	{ id = 3, type = "line", speaker = "Narrator",
-	  text = "W polmroku migocze swiatlo lampy naftowej stojacej na drewnianym stole. Jej plomien tanczy niespokojnie, a cienie skacza po scianach, przypominajac chaotyczne ksztalty.",
+	  text = "W polmroku migocze swiatlo lampy naftowej stojacej na drewnianym stole. Jej plomien tanczy" ..
+	   "niespokojnie, a cienie skacza po scianach, przypominajac chaotyczne ksztalty.",
 	  target = 4 },
 
 	{ id = 4, type = "choice", prompt = "Czy chcesz przyjrzec sie cieniom?",
@@ -22,7 +22,8 @@ DIALOG_CHAPTER01 = {
 	},
 
 	{ id = 5, type = "line", speaker = "Narrator",
-	  text = "Patrzysz dlugo, az zaczynasz dostrzegac skrzywione, wynaturzone sylwetki. Wysuniete rece, rozciagniete twarze, ciala jak z koszmaru. Po chwili znikaja, jakby nigdy ich nie bylo.",
+	  text = "Patrzysz dlugo, az zaczynasz dostrzegac skrzywione, wynaturzone sylwetki. Wysuniete rece," ..
+	   "rozciagniete twarze, ciala jak z koszmaru. Po chwili znikaja, jakby nigdy ich nie bylo.",
 	  target = 6 },
 
 	{ id = 6, type = "line", speaker = "Narrator",
