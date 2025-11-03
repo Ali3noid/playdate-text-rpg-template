@@ -56,6 +56,10 @@ function DialogState:init(cfg)
 	self.currentId  = nil
 	self.node       = nil
 
+	self.usedFlags = { item = {}, stat = {}, lock = {} }  -- Track used one-shot actions
+	-- Start dialog at node 1
+	if self.idToPos[1] then self:enterById(1) else self:enterByPos(1) end
+
 	-- Choice state
 	self.choiceIndex         = 1
 	self.choiceFirstVisible  = 1
@@ -97,8 +101,35 @@ end
 
 function DialogState:enterByPos(pos)
 	self.posIndex = pos
-	self.node     = self.script[self.posIndex]
-	self.currentId = (self.node and self.node.id) or nil
+	self.node = self.script[self.posIndex]
+	self.currentId = self.node and self.node.id or nil
+	-- Reset choice UI state
+	self.choiceIndex = 1
+	self.choiceFirstVisible = 1
+
+	-- If this is a choice node, strip out options that are already used
+	if self.node and self.node.type == "choice" and self.node.options then
+		local filteredOpts = {}
+		for _, opt in ipairs(self.node.options) do
+			local targetId = opt.target
+			-- Determine if the target leads to a used one-shot action
+			local used = false
+			if targetId then
+				if self.usedFlags.item[targetId] or self.usedFlags.stat[targetId] or self.usedFlags.lock[targetId] then
+					used = true  -- direct target is a used action node
+				-- else
+					-- (Optional) further check: if targetId leads to a sequence where a later node is one-shot and used.
+					-- For example, follow linear narrative nodes from targetId until an action node is found, and check its flag.
+					-- For brevity, not shown here.
+				end
+			end
+			if not used then
+				table.insert(filteredOpts, opt)  -- keep this option
+			end
+		end
+		self.node.options = filteredOpts  -- update the options list
+		self.choiceIndex = 1  -- reset selection index if needed
+	end
 
 	-- reset per-node UI
 	self.choiceIndex = 1
@@ -242,14 +273,13 @@ function DialogState:optionIsAvailable(opt)
 		if cur < need then return false end
 	end
 	if opt.requireItem then
-		if type(self.inventory) == "table" and self.inventory.has and type(self.inventory.has) == "function" then
-			if not self.inventory:has(opt.requireItem) then return false end
-		else
-			local have = false
-			for _, id in ipairs(self.inventory) do
-				if id == opt.requireItem then have = true break end
-			end
-			if not have then return false end
+		if not (self.inventory:has(opt.requireItem)) then return false end
+	end
+	-- New check: if option leads to a used one-shot node, disable it
+	if opt.target then
+		local id = opt.target
+		if self.usedFlags.item[id] or self.usedFlags.stat[id] or self.usedFlags.lock[id] then
+			return false
 		end
 	end
 	return true
@@ -363,10 +393,19 @@ end
 function DialogState:giveItemIfAny()
 	if not (self.node and self.node.item) then return end
 	local id = self.node.item
-	if type(self.inventory) == "table" and self.inventory.add and type(self.inventory.add) == "function" then
+	if self.node.id and self.usedFlags.item[self.node.id] then
+		-- Item already picked up once; do not grant again
+		return
+	end
+	-- Grant the item (to Inventory or table)
+	if type(self.inventory) == "table" and self.inventory.add then
 		self.inventory:add(id)
 	else
 		table.insert(self.inventory, id)
+	end
+	-- Mark this item node as used
+	if self.node.id then
+		self.usedFlags.item[self.node.id] = true
 	end
 end
 
@@ -457,11 +496,20 @@ end
 -- Apply the stat delta from a 'stat' node exactly once when leaving the node.
 function DialogState:applyStatDelta()
 	if not (self.node and self.node.type == "stat") then return end
-	local name  = self.node.stat
+	local name  = self.node.stat  -- which stat to modify
 	local delta = self.node.delta or 0
 	if not name then return end
+	if self.node.id and self.usedFlags.stat[self.node.id] then
+		return  -- Stat already granted once; skip duplicate
+	end
+	-- Apply the stat delta
 	self.stats[name] = (self.stats[name] or 0) + delta
+	-- Flag this stat node as used
+	if self.node.id then
+		self.usedFlags.stat[self.node.id] = true
+	end
 end
+
 
 -- ===== Small helpers =====
 
@@ -585,6 +633,10 @@ function DialogState:lockConfirm()
 				break
 			end
 		end
+	end
+
+	if success and self.node.id then
+		self.usedFlags.lock[self.node.id] = true  -- Flag the lock node as opened
 	end
 
 	local infoText = success
